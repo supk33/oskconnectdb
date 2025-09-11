@@ -1,0 +1,40 @@
+{
+  "name": "oskconnectdb",
+  "version": "1.0.0",
+  "description": "ระบบจัดการร้านค้าในเครือข่ายที่ใช้ Firebase Services ทั้งหมด",
+  "main": "index.js",
+  "scripts": {
+    "install:all": "npm install && cd client && npm install && cd ../functions && npm install",
+    "dev": "concurrently \"npm run emulators\" \"npm run client\"",
+    "client": "cd client && npm start",
+    "build": "cd client && npm run build",
+    "deploy": "npm run build && firebase deploy",
+    "deploy:hosting": "npm run build && firebase deploy --only hosting",
+    "deploy:functions": "firebase deploy --only functions",
+    "deploy:firestore": "firebase deploy --only firestore:rules",
+    "deploy:storage": "firebase deploy --only storage",
+    "firebase:init": "firebase init",
+    "firebase:login": "firebase login",
+    "firebase:use": "firebase use",
+    "firebase:projects": "firebase projects:list",
+    "firebase:config": "firebase functions:config:get",
+    "firebase:logs": "firebase functions:log",
+    "emu": "firebase emulators:start --only functions,firestore,auth,storage --import=./emulator-data --export-on-exit"
+  },
+  "keywords": [
+    "firebase",
+    "react",
+    "firestore",
+    "cloud-functions",
+    "line-liff",
+    "shop-management"
+  ],
+  "author": "OSK Connect Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

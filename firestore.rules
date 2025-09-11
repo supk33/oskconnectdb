@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Stores collection
+    match /stores/{storeId} {
+      allow read: if true; // ทุกคนอ่านได้
+      allow write: if request.auth != null && (
+        request.auth.uid == resource.data.ownerId || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+      allow create: if request.auth != null;
+    }
+    
+    // Tags collection
+    match /tags/{tagId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Promotions collection
+    match /promotions/{promoId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Menu items collection
+    match /menuItems/{itemId} {
+      allow read: if true;
+      allow write: if request.auth != null && (
+        request.auth.uid == resource.data.storeOwnerId || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    
+    // Store photos collection
+    match /storePhotos/{photoId} {
+      allow read: if true;
+      allow write: if request.auth != null && (
+        request.auth.uid == resource.data.storeOwnerId || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    
+    // Store reviews collection
+    match /storeReviews/{reviewId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow delete: if request.auth != null && (
+        request.auth.uid == resource.data.userId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    
+    // Store categories collection
+    match /storeCategories/{categoryId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // User favorites collection
+    match /userFavorites/{favoriteId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+    
+    // Store operating hours collection
+    match /storeOperatingHours/{hoursId} {
+      allow read: if true;
+      allow write: if request.auth != null && (
+        request.auth.uid == resource.data.storeOwnerId || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+  }
+}

@@ -1,0 +1,32 @@
+
+D:\coding\oskconnectdb
+├── .firebase
+├── .firebaserc
+├── .gitignore
+├── add-test-data.html
+├── ARCHITECTURE.md
+├── client
+├── DEPLOYMENT.md
+├── firebase.json
+├── firestore-debug.log
+├── firestore.indexes.json
+├── firestore.rules
+├── functions
+├── node_modules
+├── oskdb
+├── package-lock.json
+├── package.json
+├── PORTS.md
+├── public
+├── README.md
+├── server
+├── storage.rules
+├── test-data.html
+├── test-data.js
+└── TREE.txt
+
+directory: 7 file: 17
+
+
+
+[2K[1G
