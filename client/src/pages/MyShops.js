@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Edit, Trash2, Plus, MapPin, Clock, CheckCircle, XCircle } from 'lucide-react';
 import axios from 'axios';
-import toast from 'react-hot-toast';
 import apiConfig from '../config/api';
 
 const MyShops = () => {
@@ -16,11 +15,11 @@ const MyShops = () => {
   const fetchMyShops = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${apiConfig.memberAPI}/shops/my-shops`);
+      const response = await axios.get(`http://127.0.0.1:5001/oskconnectdb/us-central1/api/member/shops`);
       setShops(response.data);
     } catch (error) {
       console.error('Error fetching my shops:', error);
-      toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลร้านค้า: ' + error.message);
+      alert('เกิดข้อผิดพลาดในการโหลดข้อมูลร้านค้า: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -32,12 +31,12 @@ const MyShops = () => {
     }
 
     try {
-      await axios.delete(`${apiConfig.memberAPI}/shops/${shopId}`);
-      toast.success('ลบร้านค้าสำเร็จ');
+      await axios.delete(`http://127.0.0.1:5001/oskconnectdb/us-central1/api/member/shops/${shopId}`);
+      alert('ลบร้านค้าสำเร็จ');
       fetchMyShops();
     } catch (error) {
       console.error('Error deleting shop:', error);
-      toast.error('เกิดข้อผิดพลาดในการลบร้านค้า: ' + error.message);
+      alert('เกิดข้อผิดพลาดในการลบร้านค้า: ' + error.message);
     }
   };
 

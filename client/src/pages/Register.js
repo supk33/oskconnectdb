@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, User, Mail, Lock } from 'lucide-react';
-import toast from 'react-hot-toast';
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -11,28 +9,70 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { register: registerUser } = useAuth();
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [errors, setErrors] = useState({});
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors }
-  } = useForm();
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
 
-  const password = watch('password');
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.firstName.trim()) newErrors.firstName = 'กรุณากรอกชื่อ';
+    if (!formData.lastName.trim()) newErrors.lastName = 'กรุณากรอกนามสกุล';
+    if (!formData.email.trim()) {
+      newErrors.email = 'กรุณากรอกอีเมล';
+    } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.email)) {
+      newErrors.email = 'รูปแบบอีเมลไม่ถูกต้อง';
+    }
+    if (!formData.password) {
+      newErrors.password = 'กรุณากรอกรหัสผ่าน';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+    }
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'กรุณายืนยันรหัสผ่าน';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'รหัสผ่านไม่ตรงกัน';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    
     setIsLoading(true);
     try {
-      const result = await registerUser(data);
+      const result = await registerUser(formData);
       if (result.success) {
-        toast.success('ลงทะเบียนสำเร็จ');
+        alert('ลงทะเบียนสำเร็จ');
         navigate('/');
       } else {
-        toast.error(result.message);
+        alert(result.message);
       }
     } catch (error) {
-      toast.error('เกิดข้อผิดพลาดในการลงทะเบียน');
+      alert('เกิดข้อผิดพลาดในการลงทะเบียน');
     } finally {
       setIsLoading(false);
     }
@@ -56,7 +96,7 @@ const Register = () => {
           </p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+        <form className="mt-8 space-y-6" onSubmit={onSubmit}>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -69,16 +109,16 @@ const Register = () => {
                   </div>
                   <input
                     id="firstName"
+                    name="firstName"
                     type="text"
-                    {...register('firstName', {
-                      required: 'กรุณากรอกชื่อ'
-                    })}
+                    value={formData.firstName}
+                    onChange={handleInputChange}
                     className="appearance-none relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
                     placeholder="ชื่อ"
                   />
                 </div>
                 {errors.firstName && (
-                  <p className="mt-1 text-sm text-red-600">{errors.firstName.message}</p>
+                  <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
                 )}
               </div>
 
@@ -92,16 +132,16 @@ const Register = () => {
                   </div>
                   <input
                     id="lastName"
+                    name="lastName"
                     type="text"
-                    {...register('lastName', {
-                      required: 'กรุณากรอกนามสกุล'
-                    })}
+                    value={formData.lastName}
+                    onChange={handleInputChange}
                     className="appearance-none relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
                     placeholder="นามสกุล"
                   />
                 </div>
                 {errors.lastName && (
-                  <p className="mt-1 text-sm text-red-600">{errors.lastName.message}</p>
+                  <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
                 )}
               </div>
             </div>
@@ -116,20 +156,16 @@ const Register = () => {
                 </div>
                 <input
                   id="email"
+                  name="email"
                   type="email"
-                  {...register('email', {
-                    required: 'กรุณากรอกอีเมล',
-                    pattern: {
-                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                      message: 'รูปแบบอีเมลไม่ถูกต้อง'
-                    }
-                  })}
+                  value={formData.email}
+                  onChange={handleInputChange}
                   className="appearance-none relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
                   placeholder="your@email.com"
                 />
               </div>
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
               )}
             </div>
 
@@ -143,14 +179,10 @@ const Register = () => {
                 </div>
                 <input
                   id="password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
-                  {...register('password', {
-                    required: 'กรุณากรอกรหัสผ่าน',
-                    minLength: {
-                      value: 6,
-                      message: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'
-                    }
-                  })}
+                  value={formData.password}
+                  onChange={handleInputChange}
                   className="appearance-none relative block w-full pl-10 pr-10 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
                   placeholder="รหัสผ่าน"
                 />
@@ -167,7 +199,7 @@ const Register = () => {
                 </button>
               </div>
               {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
               )}
             </div>
 
@@ -181,11 +213,10 @@ const Register = () => {
                 </div>
                 <input
                   id="confirmPassword"
+                  name="confirmPassword"
                   type={showConfirmPassword ? 'text' : 'password'}
-                  {...register('confirmPassword', {
-                    required: 'กรุณายืนยันรหัสผ่าน',
-                    validate: value => value === password || 'รหัสผ่านไม่ตรงกัน'
-                  })}
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
                   className="appearance-none relative block w-full pl-10 pr-10 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
                   placeholder="ยืนยันรหัสผ่าน"
                 />
@@ -202,7 +233,7 @@ const Register = () => {
                 </button>
               </div>
               {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">{errors.confirmPassword.message}</p>
+                <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
               )}
             </div>
           </div>

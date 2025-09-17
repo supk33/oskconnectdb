@@ -1,0 +1,511 @@
+/* Admin Panel Styles */
+.admin-panel {
+    min-height: 100vh;
+    background: #f8f9fa;
+  }
+  
+  .admin-header {
+    background: linear-gradient(135deg, #2c3e50, #34495e);
+    color: white;
+    padding: 2rem 0;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+  
+  .admin-header h1 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+  }
+  
+  .admin-header p {
+    opacity: 0.8;
+    font-size: 1rem;
+  }
+  
+  /* Navigation */
+  .admin-nav {
+    background: white;
+    padding: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: center;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .nav-btn {
+    padding: 1rem 2rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #666;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    position: relative;
+  }
+  
+  .nav-btn:hover {
+    background: #f8f9fa;
+    color: #2c3e50;
+  }
+  
+  .nav-btn.active {
+    color: #2c3e50;
+    border-bottom-color: #3498db;
+    background: #f8f9fa;
+    font-weight: 600;
+  }
+  
+  /* Content */
+  .admin-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+  }
+  
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  
+  .section-header h2 {
+    color: #2c3e50;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  
+  /* Search Box */
+  .search-box input {
+    padding: 0.75rem 1rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    width: 300px;
+    outline: none;
+  }
+  
+  .search-box input:focus {
+    border-color: #3498db;
+  }
+  
+  /* Loading */
+  .loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 4rem;
+    color: #666;
+    font-size: 1.1rem;
+  }
+  
+  /* Shop Management Table */
+  .shops-table {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+  }
+  
+  .shops-table table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .shops-table th {
+    background: #f8f9fa;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #2c3e50;
+    border-bottom: 2px solid #e9ecef;
+  }
+  
+  .shops-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #f1f3f4;
+  }
+  
+  .shops-table tr:hover {
+    background: #f8f9fa;
+  }
+  
+  .shop-info strong {
+    display: block;
+    color: #2c3e50;
+    margin-bottom: 0.25rem;
+  }
+  
+  .shop-info small {
+    color: #666;
+    font-size: 0.9rem;
+  }
+  
+  .category-badge {
+    background: linear-gradient(45deg, #3498db, #2980b9);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+  
+  .status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+  
+  .status-badge.approved {
+    background: linear-gradient(45deg, #27ae60, #229954);
+    color: white;
+  }
+  
+  .status-badge.pending {
+    background: linear-gradient(45deg, #f39c12, #e67e22);
+    color: white;
+  }
+  
+  .status-badge.rejected {
+    background: linear-gradient(45deg, #e74c3c, #c0392b);
+    color: white;
+  }
+  
+  /* Action Buttons */
+  .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .btn-edit, .btn-delete {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  
+  .btn-edit {
+    background: #3498db;
+    color: white;
+  }
+  
+  .btn-edit:hover {
+    background: #2980b9;
+  }
+  
+  .btn-delete {
+    background: #e74c3c;
+    color: white;
+  }
+  
+  .btn-delete:hover {
+    background: #c0392b;
+  }
+  
+  /* Pending Shops */
+  .no-pending {
+    text-align: center;
+    padding: 4rem;
+    color: #666;
+    font-size: 1.1rem;
+  }
+  
+  .pending-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .pending-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-left: 4px solid #f39c12;
+  }
+  
+  .pending-card h3 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+  }
+  
+  .pending-card .category {
+    display: inline-block;
+    background: #f8f9fa;
+    color: #666;
+    padding: 0.25rem 0.75rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  
+  .pending-card .description {
+    color: #666;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+  }
+  
+  .pending-card .address,
+  .pending-card .phone {
+    color: #555;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .pending-card .submitted {
+    color: #999;
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  
+  .approval-actions {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .btn-approve, .btn-reject {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  
+  .btn-approve {
+    background: #27ae60;
+    color: white;
+  }
+  
+  .btn-approve:hover {
+    background: #229954;
+  }
+  
+  .btn-reject {
+    background: #e74c3c;
+    color: white;
+  }
+  
+  .btn-reject:hover {
+    background: #c0392b;
+  }
+  
+  /* Form Styles */
+  .shop-form {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    max-width: 800px;
+  }
+  
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #2c3e50;
+    font-weight: 600;
+  }
+  
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    border-color: #3498db;
+  }
+  
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  
+  .btn-submit {
+    background: linear-gradient(135deg, #27ae60, #229954);
+    color: white;
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+  }
+  
+  .btn-submit:hover {
+    background: linear-gradient(135deg, #229954, #1e8449);
+  }
+  
+  .btn-submit:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+  }
+  
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .modal {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+  }
+  
+  .modal.large {
+    max-width: 800px;
+  }
+  
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f8f9fa;
+  }
+  
+  .modal-header h3 {
+    color: #2c3e50;
+    font-size: 1.3rem;
+    margin: 0;
+  }
+  
+  .close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+  }
+  
+  .close-btn:hover {
+    background: #f8f9fa;
+    color: #2c3e50;
+  }
+  
+  .modal textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 1rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    resize: vertical;
+  }
+  
+  .modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 2px solid #f8f9fa;
+  }
+  
+  .modal-actions button {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+    min-width: 100px;
+  }
+  
+  .modal-actions button:first-child {
+    background: #95a5a6;
+    color: white;
+  }
+  
+  .modal-actions button:first-child:hover {
+    background: #7f8c8d;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .admin-nav {
+      flex-direction: column;
+    }
+    
+    .nav-btn {
+      width: 100%;
+      text-align: center;
+    }
+    
+    .section-header {
+      flex-direction: column;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+    
+    .search-box input {
+      width: 100%;
+    }
+    
+    .shops-table {
+      overflow-x: auto;
+    }
+    
+    .pending-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+    
+    .modal {
+      margin: 1rem;
+      width: calc(100% - 2rem);
+    }
+    
+    .approval-actions {
+      flex-direction: column;
+    }
+  }

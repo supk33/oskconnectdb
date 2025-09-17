@@ -6,7 +6,7 @@ import {
   Eye,
   Clock
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { auth } from '../../config/firebase';
 
 const fmtDate = (v) => {
   if (!v) return '-';
@@ -27,21 +27,24 @@ const AdminPendingShops = () => {
 
   const fetchPendingShops = async () => {
     try {
-      const response = await fetch('/admin/api/shops/pending', {
+      const idToken = await auth.currentUser?.getIdToken?.();
+      const response = await fetch('http://127.0.0.1:5001/oskconnectdb/us-central1/api/admin/pending-shops', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'application/json',
+          ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {})
         }
       });
       
       if (response.ok) {
         const data = await response.json();
-        setShops(data);
+        setShops(data.shops || []);
       } else {
-        toast.error('Failed to fetch pending shops');
+        console.error('Failed to fetch pending shops:', response.status);
+        alert('ไม่สามารถโหลดข้อมูลร้านค้าที่รอการอนุมัติได้');
       }
     } catch (error) {
       console.error('Error fetching pending shops:', error);
-      toast.error('Failed to fetch pending shops');
+      alert('เกิดข้อผิดพลาดในการโหลดข้อมูล');
     } finally {
       setLoading(false);
     }
@@ -49,24 +52,26 @@ const AdminPendingShops = () => {
 
   const updateShopStatus = async (shopId, status) => {
     try {
-      const response = await fetch(`/admin/api/shops/${shopId}/status`, {
-        method: 'PUT',
+      const idToken = await auth.currentUser?.getIdToken?.();
+      const response = await fetch(`http://127.0.0.1:5001/oskconnectdb/us-central1/api/admin/shops/${shopId}/status`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {})
         },
         body: JSON.stringify({ status })
       });
       
       if (response.ok) {
-        toast.success(`Shop ${status === 'approved' ? 'approved' : 'rejected'} successfully`);
+        alert(`ร้านค้า${status === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ'}สำเร็จ`);
         fetchPendingShops();
       } else {
-        toast.error('Failed to update shop status');
+        const errorText = await response.text();
+        alert('ไม่สามารถอัปเดตสถานะร้านค้าได้: ' + errorText);
       }
     } catch (error) {
       console.error('Error updating shop status:', error);
-      toast.error('Failed to update shop status');
+      alert('เกิดข้อผิดพลาดในการอัปเดตสถานะร้านค้า');
     }
   };
 

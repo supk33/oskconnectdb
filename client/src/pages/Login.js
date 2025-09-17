@@ -1,39 +1,48 @@
-import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { useAuth } from '../context/AuthContext';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext'; // แก้ไข path
 
-const Login = () => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+function Login() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const location = useLocation();
+  const { user, isAuthenticated, login } = useAuth();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors }
-  } = useForm();
+  // Redirect if already logged in
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/member');
+    }
+  }, [isAuthenticated, navigate]);
 
-  const onSubmit = async (data) => {
-    setIsLoading(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const email = formData.get('email');
+    const password = formData.get('password');
+
     try {
-      const result = await login(data.email, data.password);
-      if (result.success) {
-        toast.success('เข้าสู่ระบบสำเร็จ');
-        // Redirect to intended page or default to member dashboard
-        const from = location.state?.from || '/member';
-        navigate(from, { replace: true });
-      } else {
-        toast.error(result.message);
-      }
+      setLoading(true);
+      setError(null);
+      await login(email, password);
+      navigate('/member');
     } catch (error) {
-      toast.error('เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
+      setError(error.message);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
+    }
+  };
+
+  const handleTestLogin = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      await login('test@example.com', '123456');
+      navigate('/member');
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -46,108 +55,85 @@ const Login = () => {
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             หรือ{' '}
-            <Link
-              to="/register"
+            <a
+              href="/register"
               className="font-medium text-primary-600 hover:text-primary-500"
             >
               ลงทะเบียนบัญชีใหม่
-            </Link>
+            </a>
           </p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
+          
           <div className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 อีเมล
               </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="email"
-                  type="email"
-                  {...register('email', {
-                    required: 'กรุณากรอกอีเมล',
-                    pattern: {
-                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                      message: 'รูปแบบอีเมลไม่ถูกต้อง'
-                    }
-                  })}
-                  className="appearance-none relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                  placeholder="your@email.com"
-                />
-              </div>
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-              )}
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                placeholder="your@email.com"
+              />
             </div>
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 รหัสผ่าน
               </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  {...register('password', {
-                    required: 'กรุณากรอกรหัสผ่าน'
-                  })}
-                  className="appearance-none relative block w-full pl-10 pr-10 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                  placeholder="รหัสผ่าน"
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400" />
-                  )}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
-              )}
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                placeholder="รหัสผ่าน"
+              />
             </div>
           </div>
 
           <div>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  กำลังเข้าสู่ระบบ...
-                </div>
-              ) : (
-                'เข้าสู่ระบบ'
-              )}
+              {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
             </button>
           </div>
 
           <div className="text-center">
-            <Link
-              to="/"
+            <button
+              type="button"
+              onClick={handleTestLogin}
+              disabled={loading}
+              className="text-sm text-gray-600 hover:text-gray-800 underline"
+            >
+              ทดสอบด้วย test@example.com (123456)
+            </button>
+          </div>
+
+          <div className="text-center">
+            <a
+              href="/"
               className="font-medium text-primary-600 hover:text-primary-500"
             >
               กลับหน้าหลัก
-            </Link>
+            </a>
           </div>
         </form>
       </div>
     </div>
   );
-};
+}
 
 export default Login;

@@ -70,8 +70,15 @@ export const AuthProvider = ({ children }) => {
           ...firebaseUser
         };
 
+        // Manual admin role assignment for development
+        if (firebaseUser.email === 'admin@oskconnect.com') {
+          userData.role = 'admin';
+          console.log('Manual admin role assigned for:', firebaseUser.email);
+        }
+
         // Try to get user data from Firestore
         try {
+          console.log('Fetching user from Firestore with UID:', firebaseUser.uid);
           const userDocRef = doc(db, 'users', firebaseUser.uid);
           const userDoc = await getDoc(userDocRef);
           
@@ -87,7 +94,8 @@ export const AuthProvider = ({ children }) => {
             };
             console.log('User data from Firestore:', userData);
           } else {
-            console.log('No user document found in Firestore, using default data');
+            console.log('No user document found in Firestore for UID:', firebaseUser.uid);
+            console.log('Using default data with role: member');
           }
         } catch (firestoreError) {
           console.error('Error fetching user from Firestore:', firestoreError);

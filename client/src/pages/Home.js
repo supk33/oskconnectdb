@@ -33,7 +33,7 @@ const Home = () => {
           
           {isAuthenticated ? (
             <Link
-              to="/add-shop"
+              to="/member/shop/add"
               className="bg-white text-primary-600 border-2 border-primary-600 px-8 py-3 rounded-lg text-lg font-medium hover:bg-primary-50 transition-colors flex items-center justify-center space-x-2"
             >
               <Plus className="h-5 w-5" />

@@ -7,8 +7,9 @@
       "**/node_modules/**"
     ],
     "rewrites": [
-      { "source": "/api/**", "function": { "functionId": "api", "region": "us-central1" } },
-      { "source": "/__health", "function": { "functionId": "api", "region": "us-central1" } },
+      { "source": "/api/health", "function": { "functionId": "api", "region": "us-central1" } },
+      { "source": "/api/test", "function": { "functionId": "api", "region": "us-central1" } },
+      { "source": "/api/shops", "function": { "functionId": "api", "region": "us-central1" } },
       {"source": "**", "destination": "/index.html"}
     ],
     "headers": [
@@ -34,9 +35,8 @@
   },
   "functions": {
     "source": "functions",
-    "runtime": "nodejs20",
-    "codebase": "default",
-    "region": "us-central1"
+    "runtime": "nodejs18",
+    "codebase": "default"
   },
   "firestore": {
     "rules": "firestore.rules",
@@ -64,6 +64,8 @@
     "ui": {
       "enabled": true,
       "port": 4000
-    }
+    },
+    "singleProjectMode": true,
+    "import": "firebase-export.json"
   }
 }

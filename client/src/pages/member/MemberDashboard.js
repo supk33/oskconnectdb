@@ -1,28 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { httpsCallable } from 'firebase/functions';
-import { fns } from '../../config/firebase';
+// import { httpsCallable } from 'firebase/functions';
+// import { fns } from '../../config/firebase';
 import { 
   Plus, 
   Store, 
   MapPin, 
   Tag, 
-  Image, 
-  Gift, 
-  Menu, 
+  // Image, 
+  // Gift, 
+  // Menu, 
   Edit, 
   Trash2,
   Eye,
   Clock
 } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { auth } from '../../config/firebase';
+import { auth, db } from '../../config/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import GoogleMapsView from '../../components/GoogleMapsView';
 
 const MemberDashboard = () => {
   const { user } = useAuth();
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState({
     total: 0,
     approved: 0,
@@ -31,35 +33,62 @@ const MemberDashboard = () => {
   });
 
   useEffect(() => {
-    fetchShops();
-  }, []);
+    if (user?.uid) {
+      setupRealTimeListener();
+    }
+    
+    // Cleanup listener on unmount
+    return () => {
+      // Firestore listeners will be automatically cleaned up
+    };
+  }, [user?.uid]);
 
-  const fetchShops = async () => {
+  const setupRealTimeListener = () => {
     try {
-      const idToken = await auth.currentUser?.getIdToken?.(); // เอา Firebase ID token
-      const res = await fetch('/api/member/shops', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
-        }
+      setLoading(true);
+      console.log('MemberDashboard - Setting up real-time listener for user:', user?.uid);
+      
+      // Listen to shops collection changes for current user
+      console.log('MemberDashboard - Setting up query for user UID:', user.uid);
+      const shopsQuery = query(
+        collection(db, 'stores'),
+        where('ownerId', '==', user.uid)
+      );
+      
+      const unsubscribe = onSnapshot(shopsQuery, (shopsSnapshot) => {
+        const userShops = [];
+        console.log('MemberDashboard - Real-time update:', {
+          totalShops: shopsSnapshot.size,
+          userUid: user.uid
+        });
+        shopsSnapshot.forEach((doc) => {
+          userShops.push({ id: doc.id, ...doc.data() });
+        });
+        
+        console.log('MemberDashboard - User shops updated:', {
+          totalShops: userShops.length,
+          shops: userShops.map(shop => ({ id: shop.id, name: shop.shopName, status: shop.status }))
+        });
+        
+        setShops(userShops);
+        
+        const statsData = {
+          total: userShops.length,
+          approved: userShops.filter(s => s.status === 'approved').length,
+          pending: userShops.filter(s => s.status === 'pending').length,
+          rejected: userShops.filter(s => s.status === 'rejected').length
+        };
+        
+        setStats(statsData);
+        
+        setLoading(false);
+      }, (error) => {
+        console.error('MemberDashboard - Real-time listener error:', error);
+        setLoading(false);
       });
-      if (!res.ok) throw new Error(await res.text());
-  
-      const data = await res.json();
-      const shops = Array.isArray(data) ? data : (data?.shops || []);
-      setShops(shops);
-  
-      setStats({
-        total: shops.length,
-        approved: shops.filter(s => s.status === 'approved').length,
-        pending: shops.filter(s => s.status === 'pending').length,
-        rejected: shops.filter(s => s.status === 'rejected').length
-      });
-    } catch (err) {
-      console.error('Error fetching shops:', err);
-      toast.error('Failed to fetch shops');
-    } finally {
+      
+    } catch (error) {
+      console.error('MemberDashboard - Error setting up real-time listener:', error);
       setLoading(false);
     }
   };
@@ -90,6 +119,12 @@ const MemberDashboard = () => {
     }
   };
 
+  const formatDate = (date) => {
+    if (!date) return 'ไม่ระบุ';
+    const d = date.toDate ? date.toDate() : new Date(date);
+    return d.toLocaleDateString('th-TH');
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -110,8 +145,38 @@ const MemberDashboard = () => {
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      {/* Tabs */}
+      <div className="border-b border-gray-200 mb-8">
+        <nav className="-mb-px flex space-x-8">
+          {[
+            { id: 'dashboard', name: 'ภาพรวม', icon: Eye },
+            { id: 'shops', name: 'ร้านค้าของฉัน', icon: Store },
+            { id: 'map', name: 'แผนที่', icon: MapPin }
+          ].map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === tab.id
+                    ? 'border-school-blue text-school-blue'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Icon className="h-5 w-5 mr-2" />
+                {tab.name}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Dashboard Tab */}
+      {activeTab === 'dashboard' && (
+        <>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center">
             <div className="p-2 bg-school-blue/10 rounded-lg">
@@ -229,18 +294,23 @@ const MemberDashboard = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {shops.slice(0, 5).map((shop) => (
+              {shops.slice(0, 5).map((shop, index) => (
                 <div
-                  key={shop.id}
+                  key={shop.id || `shop-${index}`}
                   className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-center space-x-4">
                     <div className="flex-shrink-0">
                       {shop.images && shop.images.length > 0 ? (
                         <img
-                          src={shop.images[0].path}
+                          src={shop.images[0]}
                           alt={shop.shopName}
                           className="h-12 w-12 rounded-lg object-cover"
+                          onError={(e) => {
+                            console.log('Image load error in MemberDashboard:', shop.images[0]);
+                            e.target.style.display = 'none';
+                          }}
+                          onLoad={() => console.log('Image loaded successfully in MemberDashboard:', shop.images[0])}
                         />
                       ) : (
                         <div className="h-12 w-12 bg-gray-200 rounded-lg flex items-center justify-center">
@@ -282,6 +352,93 @@ const MemberDashboard = () => {
           )}
         </div>
       </div>
+        </>
+      )}
+
+      {/* Shops Tab */}
+      {activeTab === 'shops' && (
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">
+                ร้านค้าของฉัน ({shops.length} ร้าน)
+              </h3>
+              <Link
+                to="/member/shop/add"
+                className="inline-flex items-center px-4 py-2 bg-school-blue text-white rounded-lg hover:bg-school-blue/90 transition-colors"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                เพิ่มร้านค้า
+              </Link>
+            </div>
+            
+            {shops.length === 0 ? (
+              <div className="text-center py-8">
+                <Store className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">ยังไม่มีร้านค้า</h3>
+                <p className="text-gray-600 mb-4">เริ่มต้นด้วยการเพิ่มร้านค้าแรกของคุณ</p>
+                <Link
+                  to="/member/shop/add"
+                  className="inline-flex items-center px-4 py-2 bg-school-blue text-white rounded-lg hover:bg-school-blue/90 transition-colors"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  เพิ่มร้านค้า
+                </Link>
+              </div>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {shops.map((shop, index) => (
+                  <div
+                    key={shop.id || `shop-${index}`}
+                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                  >
+                    <h4 className="font-medium text-gray-900 mb-2">
+                      {shop.shopName}
+                    </h4>
+                    <p className="text-sm text-gray-600 mb-2">
+                      {shop.description || 'ไม่มีรายละเอียด'}
+                    </p>
+                    <p className="text-xs text-gray-500 mb-3">
+                      สร้างเมื่อ: {formatDate(shop.createdAt)}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(shop.status)}`}>
+                        {getStatusText(shop.status)}
+                      </span>
+                      <div className="flex space-x-2">
+                        <Link
+                          to={`/member/shop/edit/${shop.id}`}
+                          className="p-1 text-gray-400 hover:text-school-blue transition-colors"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Map Tab */}
+      {activeTab === 'map' && (
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <GoogleMapsView 
+              shops={shops} 
+              center={{ lat: 13.7563, lng: 100.5018 }} // Bangkok center
+              zoom={10}
+              className="h-96"
+              onShopClick={(shop) => {
+                console.log('Shop clicked:', shop);
+                // You can add more functionality here, like opening a modal
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

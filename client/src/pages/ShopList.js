@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { MapPin, List, Map, Search, Plus } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { testShops } from '../utils/testData';
 import { addTestDataToFirestore } from '../utils/addTestData';
 import { useAuth } from '../context/AuthContext';
 import { auth } from '../config/firebase';
+import GoogleMapsView from '../components/GoogleMapsView';
 
 // ---- helper: ทำให้ได้ Array เสมอ ----
 function toArray(v) {
@@ -39,12 +38,7 @@ const ShopList = () => {
   const safeShops = Array.isArray(shops) ? shops : [];
 
   useEffect(() => {
-    // Use test data immediately for now
-    console.log('Test data:', testShops);
-    setShops(testShops);
-    setLoading(false);
-    
-    // Try to fetch real data (but don't wait for it)
+    // Fetch real data from API
     getCurrentLocation(); // ให้ตัวนี้จัดการเรียก fetchShops เอง
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -78,7 +72,7 @@ const ShopList = () => {
           : {}),
       }).toString();
   
-      // ลอง /api/shops ก่อน (ตาม routes/api.js), ถ้า 404 ค่อย fallback เป็น /api/stores
+      // ใช้ Firebase Functions URL
       const tryFetch = async (path) => {
         const idToken = await auth.currentUser?.getIdToken?.().catch(() => null);
         const headers = idToken ? { Authorization: `Bearer ${idToken}` } : {};
@@ -87,13 +81,13 @@ const ShopList = () => {
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
         return res.json();
       };
-  
+
       let data;
       try {
-        data = await tryFetch('/api/shops');
+        data = await tryFetch('http://127.0.0.1:5001/oskconnectdb/us-central1/api/shops');
       } catch (e1) {
         console.warn('GET /api/shops failed, fallback to /api/stores', e1);
-        data = await tryFetch('/api/stores');
+        data = await tryFetch('http://127.0.0.1:5001/oskconnectdb/us-central1/api/stores');
       }
   
       // รองรับทั้งรูปแบบ array ตรง ๆ หรือ { shops: [...] } / { items: [...] }
@@ -109,10 +103,13 @@ const ShopList = () => {
       console.error('Error fetching shops:', err);
       // dev: ใช้ test data เป็น fallback
       if (process.env.NODE_ENV !== 'production') {
+        console.log('Using test data as fallback');
         setShops(testShops);
+      } else {
+        setShops([]);
       }
-      // prod: แจ้งเตือนนุ่ม ๆ ได้ตามต้องการ
-      // toast.error('โหลดข้อมูลร้านไม่สำเร็จ');
+      // Don't show alert for empty results, just log the error
+      console.log('Failed to load shops from API');
     } finally {
       setLoading(false);
     }
@@ -123,14 +120,14 @@ const ShopList = () => {
     try {
       const result = await addTestDataToFirestore();
       if (result.success) {
-        toast.success('เพิ่มข้อมูลทดสอบสำเร็จ!');
-        // Refresh the page to show new data
-        window.location.reload();
+        alert('เพิ่มข้อมูลทดสอบสำเร็จ!');
+        // Refresh the data instead of reloading the page
+        await fetchShops();
       } else {
-        toast.error('เกิดข้อผิดพลาด: ' + result.message);
+        alert('เกิดข้อผิดพลาด: ' + result.message);
       }
     } catch (error) {
-      toast.error('เกิดข้อผิดพลาด: ' + error.message);
+      alert('เกิดข้อผิดพลาด: ' + error.message);
     } finally {
       setAddingTestData(false);
     }
@@ -291,7 +288,12 @@ const ShopList = () => {
             <div key={shopKey(shop, i)} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">{shop.shopName}</h3>
+                  <Link 
+                    to={`/shops/${shop.id || shopKey(shop, i)}`}
+                    className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+                  >
+                    {shop.shopName}
+                  </Link>
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(shop.status)}`}>
                     {getStatusText(shop.status)}
                   </span>
@@ -340,57 +342,23 @@ const ShopList = () => {
             </div>
           ))}
         </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="h-96 md:h-[600px]">
-            <MapContainer
-              center={userLocation || [13.7563, 100.5018]} // Bangkok default
-              zoom={12}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              />
-              
-              {filteredShops
-                .filter(s =>
-                  Array.isArray(s?.location?.coordinates) &&
-                  s.location.coordinates.length >= 2 &&
-                  Number.isFinite(Number(s.location.coordinates[0])) &&
-                  Number.isFinite(Number(s.location.coordinates[1]))
-                )
-                .map((shop, i) => {
-                  const lng = Number(shop.location.coordinates[0]);
-                  const lat = Number(shop.location.coordinates[1]);
-                  return (
-                    <Marker
-                      key={shopKey(shop, i)}
-                      position={[lat, lng]}  // Leaflet ใช้ [lat, lng]
-                    >
-                      <Popup>
-                        <div className="p-2">
-                          <h3 className="font-semibold text-lg">{shop.shopName}</h3>
-                          <p className="text-sm text-gray-600 mb-2">{shop.description}</p>
-                          {shop.category && (
-                            <span className="inline-block bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded mb-2">
-                              {shop.category}
-                            </span>
-                          )}
-                          <div className="text-xs text-gray-500">
-                            <div>เจ้าของ: {shop.owner?.firstName} {shop.owner?.lastName}</div>
-                            {shop.phone && <div>โทร: {shop.phone}</div>}
-                            {shop.email && <div>อีเมล: {shop.email}</div>}
-                          </div>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  );
-                })}
-            </MapContainer>
-          </div>
-        </div>
-      )}
+       ) : (
+         <div className="bg-white rounded-lg shadow-md overflow-hidden">
+           <div className="p-6">
+             <GoogleMapsView 
+               shops={filteredShops} 
+               center={{ lat: 13.7563, lng: 100.5018 }} // Bangkok center
+               zoom={10}
+               className="h-96 md:h-[600px]"
+               onShopClick={(shop) => {
+                 console.log('Shop clicked:', shop);
+                 // Navigate to shop detail page
+                 window.location.href = `/shops/${shop.id || shopKey(shop, 0)}`;
+               }}
+             />
+           </div>
+         </div>
+       )}
 
       {filteredShops.length === 0 && (
         <div className="text-center py-12">

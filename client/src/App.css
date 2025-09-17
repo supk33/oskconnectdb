@@ -1,0 +1,512 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+    line-height: 1.6;
+  }
+  
+  .App {
+    min-height: 100vh;
+  }
+  
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #e91e63, #f06292);
+    color: white;
+    padding: 2rem 0;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+  
+  .header-content h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  
+  .header-content p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  /* Container */
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+  
+  /* Search Section */
+  .search-section {
+    background: white;
+    padding: 1.5rem 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  
+  .search-controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    align-items: center;
+  }
+  
+  .search-bar {
+    flex: 1;
+    position: relative;
+    max-width: 500px;
+  }
+  
+  .search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+    font-size: 1.1rem;
+  }
+  
+  .search-bar input {
+    width: 100%;
+    padding: 1rem 1rem 1rem 3rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 50px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  
+  .search-bar input:focus {
+    border-color: #e91e63;
+    box-shadow: 0 0 0 3px rgba(233, 30, 99, 0.1);
+  }
+  
+  .filters {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .category-select, .sort-select {
+    padding: 0.75rem 1rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: white;
+    cursor: pointer;
+    outline: none;
+    min-width: 120px;
+  }
+  
+  .category-select:focus, .sort-select:focus {
+    border-color: #e91e63;
+  }
+  
+  /* View Controls */
+  .view-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .view-buttons {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .view-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e0e0e0;
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+  
+  .view-btn:hover {
+    border-color: #e91e63;
+  }
+  
+  .view-btn.active {
+    background: #e91e63;
+    border-color: #e91e63;
+    color: white;
+  }
+  
+  .view-btn .icon {
+    font-size: 1.1rem;
+  }
+  
+  .results-count {
+    color: #666;
+    font-weight: 500;
+  }
+  
+  /* Main Content */
+  .main {
+    padding: 2rem 0;
+  }
+  
+  /* Loading */
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    color: #666;
+  }
+  
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #e91e63;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  /* No Results */
+  .no-results {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #666;
+  }
+  
+  .no-results-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+  
+  .no-results h3 {
+    margin-bottom: 0.5rem;
+    color: #333;
+  }
+  
+  /* Grid View */
+  .shops-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .shop-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid #f0f0f0;
+  }
+  
+  .shop-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  }
+  
+  .shop-header {
+    margin-bottom: 1rem;
+  }
+  
+  .shop-header h3 {
+    color: #e91e63;
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  
+  .shop-meta {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  
+  .category {
+    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+    color: #666;
+    padding: 0.25rem 0.75rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+  
+  .distance {
+    background: linear-gradient(45deg, #e3f2fd, #bbdefb);
+    color: #1976d2;
+    padding: 0.25rem 0.75rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  
+  .description {
+    color: #555;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+  }
+  
+  .shop-details {
+    margin-bottom: 1rem;
+  }
+  
+  .detail-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    color: #666;
+    font-size: 0.9rem;
+  }
+  
+  .detail-item .icon {
+    width: 20px;
+    text-align: center;
+  }
+  
+  .card-footer {
+    border-top: 1px solid #f0f0f0;
+    padding-top: 1rem;
+  }
+  
+  .card-footer small {
+    color: #999;
+    font-size: 0.8rem;
+  }
+  
+  /* List View */
+  .shops-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .shop-list-item {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 1px solid #f0f0f0;
+    transition: box-shadow 0.2s;
+  }
+  
+  .shop-list-item:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  
+  .shop-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
+  
+  .shop-main h3 {
+    color: #e91e63;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  
+  .shop-main .description {
+    color: #666;
+    margin: 0;
+  }
+  
+  .shop-contact {
+    display: flex;
+    gap: 2rem;
+    color: #666;
+    font-size: 0.9rem;
+  }
+  
+  /* Map View */
+  .map-container {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  
+  .map-placeholder {
+    min-height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border: 2px dashed #dee2e6;
+  }
+  
+  .map-content {
+    text-align: center;
+    padding: 2rem;
+    max-width: 500px;
+  }
+  
+  .map-content h3 {
+    color: #495057;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+  }
+  
+  .map-content p {
+    color: #6c757d;
+    margin-bottom: 1rem;
+  }
+  
+  .map-shops {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    text-align: left;
+  }
+  
+  .map-shop-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .map-shop-item:last-child {
+    border-bottom: none;
+  }
+  
+  .map-note {
+    font-style: italic;
+    color: #999;
+    font-size: 0.9rem;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .header-content h1 {
+      font-size: 2rem;
+    }
+    
+    .header-content p {
+      font-size: 1rem;
+    }
+    
+    .search-controls {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .search-bar {
+      max-width: none;
+    }
+    
+    .filters {
+      justify-content: space-between;
+    }
+    
+    .view-controls {
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .view-buttons {
+      justify-content: center;
+    }
+    
+    .shops-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .shop-info {
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .shop-contact {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .container {
+      padding: 0 0.5rem;
+    }
+    
+    .search-section {
+      padding: 1rem 0;
+    }
+    
+    .view-btn {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+    }
+    
+    .shop-card, .shop-list-item {
+      padding: 1rem;
+    }
+  }
+
+/* เพิ่ม CSS สำหรับปุ่มเพิ่มร้านค้า */
+.add-shop-button {
+  margin-left: auto;
+}
+
+.add-shop-btn {
+  background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.add-shop-btn:hover {
+  background: linear-gradient(135deg, #ff5252, #ff7979);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+  color: white;
+  text-decoration: none;
+}
+
+.add-shop-btn .icon {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Responsive design for add shop button */
+@media (max-width: 768px) {
+  .add-shop-button {
+    margin-left: 0;
+    margin-top: 1rem;
+    width: 100%;
+  }
+  
+  .add-shop-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 14px 20px;
+  }
+}

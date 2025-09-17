@@ -21,7 +21,7 @@ router.get('/stores', async (req, res) => {
         location: data.location || { coordinates: [0, 0] },
         phone: data.phone || '',
         email: data.email || '',
-        status: data.status || 'pending',
+        status: data.status,
         owner: data.owner || null,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,

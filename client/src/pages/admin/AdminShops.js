@@ -35,6 +35,7 @@ const AdminShops = () => {
 
   const fetchShops = async () => {
     try {
+      setLoading(true);
       const params = new URLSearchParams({
         page: currentPage,
         limit: 20,
@@ -42,9 +43,19 @@ const AdminShops = () => {
         ...(searchTerm && { search: searchTerm })
       });
 
-      const response = await fetch(`/admin/api/shops?${params}`, {
+      // Get Firebase ID token
+      const { auth } = await import('../../config/firebase');
+      const idToken = await auth.currentUser?.getIdToken?.();
+      
+      if (!idToken) {
+        toast.error('กรุณาเข้าสู่ระบบใหม่');
+        return;
+      }
+
+      const response = await fetch(`http://127.0.0.1:5001/oskconnectdb/us-central1/api/admin/shops?${params}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
         }
       });
       
@@ -53,11 +64,13 @@ const AdminShops = () => {
         setShops(data.shops);
         setTotalPages(data.pagination.pages);
       } else {
-        toast.error('Failed to fetch shops');
+        const errorText = await response.text();
+        console.error('Failed to fetch shops:', response.status, errorText);
+        toast.error('ไม่สามารถโหลดข้อมูลร้านค้าได้');
       }
     } catch (error) {
       console.error('Error fetching shops:', error);
-      toast.error('Failed to fetch shops');
+      toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูล');
     } finally {
       setLoading(false);
     }
@@ -65,7 +78,7 @@ const AdminShops = () => {
 
   const updateShopStatus = async (shopId, status) => {
     try {
-      const response = await fetch(`/admin/api/shops/${shopId}/status`, {
+      const response = await fetch(`http://127.0.0.1:5001/oskconnectdb/us-central1/api/admin/shops/${shopId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -1,21 +1,24 @@
-// Callable function to create admin user
-// Add this to functions/index.js
+// Script to create admin user in Firebase emulator
+const admin = require('firebase-admin');
 
-exports.createAdminUser = functions.https.onCall(async (data, context) => {
+// Initialize Firebase Admin SDK for emulator
+admin.initializeApp({
+  projectId: 'demo-project'
+});
+
+// Connect to emulators
+process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
+process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
+
+const db = admin.firestore();
+
+async function createAdminUser() {
   try {
-    // Check if user is authenticated
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
-    }
-
-    const { uid } = context.auth;
-    const { email, name } = data;
-
     // Create admin user data
     const adminUserData = {
-      uid: uid,
-      email: email || context.auth.token.email || 'admin@oskconnect.com',
-      name: name || 'Admin User',
+      uid: 'admin-user-123',
+      email: 'admin@oskconnect.com',
+      name: 'Admin User',
       role: 'admin',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -23,19 +26,29 @@ exports.createAdminUser = functions.https.onCall(async (data, context) => {
     };
 
     // Save to Firestore
-    const db = admin.firestore();
-    await db.collection('users').doc(uid).set(adminUserData);
+    await db.collection('users').doc('admin-user-123').set(adminUserData);
 
-    console.log('Admin user created:', adminUserData);
+    console.log('Admin user created successfully:', adminUserData);
 
-    return {
-      success: true,
-      message: 'Admin user created successfully',
-      user: adminUserData
-    };
+    // Also create the user in Authentication
+    try {
+      await admin.auth().createUser({
+        uid: 'admin-user-123',
+        email: 'admin@oskconnect.com',
+        password: '123456',
+        displayName: 'Admin User'
+      });
+      console.log('Admin user created in Authentication');
+    } catch (authError) {
+      console.log('Admin user might already exist in Authentication:', authError.message);
+    }
 
   } catch (error) {
     console.error('Error creating admin user:', error);
-    throw new functions.https.HttpsError('internal', 'Failed to create admin user');
   }
+}
+
+createAdminUser().then(() => {
+  console.log('Script completed');
+  process.exit(0);
 });

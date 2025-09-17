@@ -22,6 +22,8 @@ dist/
 firebase-debug.log
 firebase-debug.*.log
 .firebaserc.local
+firebase-export.json
+firebase-export-*.json
 
 # IDE
 .vscode/

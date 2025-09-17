@@ -1,39 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import { MapPin, Save, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
-import toast from 'react-hot-toast';
-
-// Map Click Handler Component
-const MapClickHandler = ({ onLocationSelect, selectedLocation }) => {
-  useMapEvents({
-    click: (e) => {
-      onLocationSelect([e.latlng.lat, e.latlng.lng]);
-    },
-  });
-
-  return selectedLocation ? (
-    <Marker position={selectedLocation} />
-  ) : null;
-};
+import { auth } from '../config/firebase';
 
 const ShopForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState([13.7563, 100.5018]); // Bangkok default
-  const [userLocation, setUserLocation] = useState(null);
+  // const [selectedLocation, setSelectedLocation] = useState([13.7563, 100.5018]); // Bangkok default
+  // const [userLocation, setUserLocation] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors }
-  } = useForm();
+  const [formData, setFormData] = useState({
+    shopName: '',
+    description: '',
+    category: '',
+    address: '',
+    phone: '',
+    email: '',
+    website: '',
+    latitude: 13.7563,
+    longitude: 100.5018
+  });
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     getCurrentLocation();
@@ -41,18 +30,21 @@ const ShopForm = () => {
       setIsEditing(true);
       fetchShopData();
     }
-  }, [id]);
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          setUserLocation([latitude, longitude]);
+          // setUserLocation([latitude, longitude]);
           if (!isEditing) {
-            setSelectedLocation([latitude, longitude]);
-            setValue('latitude', latitude);
-            setValue('longitude', longitude);
+            // setSelectedLocation([latitude, longitude]);
+            setFormData(prev => ({
+              ...prev,
+              latitude: latitude,
+              longitude: longitude
+            }));
           }
         },
         (error) => {
@@ -68,55 +60,104 @@ const ShopForm = () => {
       const response = await axios.get(`/api/shops/${id}`);
       const shop = response.data;
       
-      setValue('shopName', shop.shopName);
-      setValue('description', shop.description);
-      setValue('latitude', shop.location.coordinates[1]);
-      setValue('longitude', shop.location.coordinates[0]);
-      setValue('address', shop.address || '');
-      setValue('phone', shop.phone || '');
-      setValue('email', shop.email || '');
-      setValue('website', shop.website || '');
-      setValue('category', shop.category || '');
+      setFormData({
+        shopName: shop.shopName,
+        description: shop.description,
+        latitude: shop.location.coordinates[1],
+        longitude: shop.location.coordinates[0],
+        address: shop.address || '',
+        phone: shop.phone || '',
+        email: shop.email || '',
+        website: shop.website || '',
+        category: shop.category || ''
+      });
       
-      setSelectedLocation([shop.location.coordinates[1], shop.location.coordinates[0]]);
+      // setSelectedLocation([shop.location.coordinates[1], shop.location.coordinates[0]]);
     } catch (error) {
       console.error('Error fetching shop:', error);
-      toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูลร้านค้า');
+      alert('เกิดข้อผิดพลาดในการโหลดข้อมูลร้านค้า');
       navigate('/my-shops');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLocationSelect = (location) => {
-    setSelectedLocation(location);
-    setValue('latitude', location[0]);
-    setValue('longitude', location[1]);
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
   };
 
-  const onSubmit = async (data) => {
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.shopName.trim()) newErrors.shopName = 'กรุณากรอกชื่อร้านค้า';
+    if (!formData.description.trim()) newErrors.description = 'กรุณากรอกรายละเอียด';
+    if (!formData.latitude || !formData.longitude) {
+      newErrors.location = 'กรุณาเลือกตำแหน่งบนแผนที่';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    
     try {
       setLoading(true);
       
+      const idToken = await auth.currentUser?.getIdToken?.();
+      
+      // Debug: Check if user is authenticated and has token
+      console.log('Current user:', auth.currentUser);
+      console.log('ID Token:', idToken ? 'Token exists' : 'No token');
+      
+      if (!auth.currentUser) {
+        alert('กรุณาเข้าสู่ระบบก่อนเพิ่มร้านค้า');
+        navigate('/login');
+        return;
+      }
+      
+      if (!idToken) {
+        alert('ไม่สามารถรับ token ได้ กรุณาลองใหม่อีกครั้ง');
+        return;
+      }
+      
       const shopData = {
-        ...data,
-        latitude: parseFloat(data.latitude),
-        longitude: parseFloat(data.longitude)
+        ...formData,
+        latitude: parseFloat(formData.latitude),
+        longitude: parseFloat(formData.longitude)
+      };
+
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`
       };
 
       if (isEditing) {
-        await axios.put(`/api/shops/${id}`, shopData);
-        toast.success('อัปเดตร้านค้าสำเร็จ');
+        await axios.put(`http://127.0.0.1:5001/oskconnectdb/us-central1/api/member/shops/${id}`, shopData, { headers });
+        alert('อัปเดตร้านค้าสำเร็จ');
       } else {
-        await axios.post('/api/shops', shopData);
-        toast.success('เพิ่มร้านค้าสำเร็จ');
+        await axios.post('http://127.0.0.1:5001/oskconnectdb/us-central1/api/member/shops', shopData, { headers });
+        alert('เพิ่มร้านค้าสำเร็จ');
       }
       
       navigate('/my-shops');
     } catch (error) {
       console.error('Error saving shop:', error);
       const message = error.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล';
-      toast.error(message);
+      alert(message);
     } finally {
       setLoading(false);
     }
@@ -146,7 +187,7 @@ const ShopForm = () => {
         </h1>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={onSubmit} className="space-y-8">
         <div className="grid md:grid-cols-2 gap-8">
           {/* Form Fields */}
           <div className="space-y-6">
@@ -156,15 +197,15 @@ const ShopForm = () => {
               </label>
               <input
                 id="shopName"
+                name="shopName"
                 type="text"
-                {...register('shopName', {
-                  required: 'กรุณากรอกชื่อร้านค้า'
-                })}
+                value={formData.shopName}
+                onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                 placeholder="ชื่อร้านค้า"
               />
               {errors.shopName && (
-                <p className="mt-1 text-sm text-red-600">{errors.shopName.message}</p>
+                <p className="mt-1 text-sm text-red-600">{errors.shopName}</p>
               )}
             </div>
 
@@ -174,15 +215,15 @@ const ShopForm = () => {
               </label>
               <textarea
                 id="description"
+                name="description"
                 rows={4}
-                {...register('description', {
-                  required: 'กรุณากรอกรายละเอียด'
-                })}
+                value={formData.description}
+                onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                 placeholder="รายละเอียดร้านค้า"
               />
               {errors.description && (
-                <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
+                <p className="mt-1 text-sm text-red-600">{errors.description}</p>
               )}
             </div>
 
@@ -192,8 +233,10 @@ const ShopForm = () => {
               </label>
               <input
                 id="category"
+                name="category"
                 type="text"
-                {...register('category')}
+                value={formData.category}
+                onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                 placeholder="เช่น ร้านอาหาร, ร้านค้า, บริการ"
               />
@@ -205,8 +248,10 @@ const ShopForm = () => {
               </label>
               <input
                 id="address"
+                name="address"
                 type="text"
-                {...register('address')}
+                value={formData.address}
+                onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                 placeholder="ที่อยู่ร้านค้า"
               />
@@ -219,8 +264,10 @@ const ShopForm = () => {
                 </label>
                 <input
                   id="phone"
+                  name="phone"
                   type="tel"
-                  {...register('phone')}
+                  value={formData.phone}
+                  onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                   placeholder="เบอร์โทร"
                 />
@@ -232,8 +279,10 @@ const ShopForm = () => {
                 </label>
                 <input
                   id="email"
+                  name="email"
                   type="email"
-                  {...register('email')}
+                  value={formData.email}
+                  onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                   placeholder="อีเมลร้านค้า"
                 />
@@ -246,8 +295,10 @@ const ShopForm = () => {
               </label>
               <input
                 id="website"
+                name="website"
                 type="url"
-                {...register('website')}
+                value={formData.website}
+                onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                 placeholder="https://example.com"
               />
@@ -260,17 +311,16 @@ const ShopForm = () => {
                 </label>
                 <input
                   id="latitude"
+                  name="latitude"
                   type="number"
                   step="any"
-                  {...register('latitude', {
-                    required: 'กรุณาเลือกตำแหน่งบนแผนที่',
-                    valueAsNumber: true
-                  })}
+                  value={formData.latitude}
+                  onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                   placeholder="13.7563"
                 />
                 {errors.latitude && (
-                  <p className="mt-1 text-sm text-red-600">{errors.latitude.message}</p>
+                  <p className="mt-1 text-sm text-red-600">{errors.latitude}</p>
                 )}
               </div>
 
@@ -280,45 +330,37 @@ const ShopForm = () => {
                 </label>
                 <input
                   id="longitude"
+                  name="longitude"
                   type="number"
                   step="any"
-                  {...register('longitude', {
-                    required: 'กรุณาเลือกตำแหน่งบนแผนที่',
-                    valueAsNumber: true
-                  })}
+                  value={formData.longitude}
+                  onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                   placeholder="100.5018"
                 />
                 {errors.longitude && (
-                  <p className="mt-1 text-sm text-red-600">{errors.longitude.message}</p>
+                  <p className="mt-1 text-sm text-red-600">{errors.longitude}</p>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Map */}
+          {/* Map Placeholder */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               เลือกตำแหน่งร้านค้า *
             </label>
-            <div className="h-96 border border-gray-300 rounded-md overflow-hidden">
-              <MapContainer
-                center={selectedLocation}
-                zoom={13}
-                style={{ height: '100%', width: '100%' }}
-              >
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                />
-                <MapClickHandler
-                  onLocationSelect={handleLocationSelect}
-                  selectedLocation={selectedLocation}
-                />
-              </MapContainer>
+            <div className="h-96 border border-gray-300 rounded-md overflow-hidden p-8 text-center">
+              <MapPin className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">แผนที่ร้านค้า</h3>
+              <p className="text-gray-600 mb-4">ตำแหน่งปัจจุบัน: {formData.latitude}, {formData.longitude}</p>
+              <div className="text-sm text-gray-500">
+                <p>แผนที่จะเพิ่มในเวอร์ชันถัดไป</p>
+                <p>ขณะนี้สามารถกรอกพิกัดละติจูดและลองจิจูดได้โดยตรง</p>
+              </div>
             </div>
             <p className="mt-2 text-sm text-gray-500">
-              คลิกบนแผนที่เพื่อเลือกตำแหน่งร้านค้า
+              กรุณากรอกพิกัดละติจูดและลองจิจูดในช่องด้านบน
             </p>
           </div>
         </div>

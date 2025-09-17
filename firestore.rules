@@ -1,11 +1,17 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && 
+        (request.auth.token.email == 'admin@oskconnect.com' || 
+         request.auth.token.role == 'admin');
+    }
+    
     // Users collection
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow read: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read, write: if isAdmin(); // Admin can access all user documents
     }
     
     // Stores collection
@@ -13,7 +19,7 @@ service cloud.firestore {
       allow read: if true; // ทุกคนอ่านได้
       allow write: if request.auth != null && (
         request.auth.uid == resource.data.ownerId || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        isAdmin()
       );
       allow create: if request.auth != null;
     }
@@ -21,15 +27,13 @@ service cloud.firestore {
     // Tags collection
     match /tags/{tagId} {
       allow read: if true;
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow write: if request.auth != null && isAdmin();
     }
     
     // Promotions collection
     match /promotions/{promoId} {
       allow read: if true;
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow write: if request.auth != null && isAdmin();
     }
     
     // Menu items collection
@@ -37,7 +41,7 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.auth != null && (
         request.auth.uid == resource.data.storeOwnerId || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        isAdmin()
       );
     }
     
@@ -46,7 +50,7 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.auth != null && (
         request.auth.uid == resource.data.storeOwnerId || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        isAdmin()
       );
     }
     
@@ -56,15 +60,14 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == resource.data.userId;
       allow delete: if request.auth != null && (
         request.auth.uid == resource.data.userId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        isAdmin()
       );
     }
     
     // Store categories collection
     match /storeCategories/{categoryId} {
       allow read: if true;
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow write: if request.auth != null && isAdmin();
     }
     
     // User favorites collection
@@ -77,7 +80,7 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.auth != null && (
         request.auth.uid == resource.data.storeOwnerId || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        isAdmin()
       );
     }
   }

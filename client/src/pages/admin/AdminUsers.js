@@ -13,9 +13,20 @@ const AdminUsers = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/admin/api/users', {
+      
+      // Get Firebase ID token
+      const { auth } = await import('../../config/firebase');
+      const idToken = await auth.currentUser?.getIdToken?.();
+      
+      if (!idToken) {
+        toast.error('กรุณาเข้าสู่ระบบใหม่');
+        return;
+      }
+
+      const response = await fetch('http://127.0.0.1:5001/oskconnectdb/us-central1/api/admin/users', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
         }
       });
       
@@ -35,7 +46,7 @@ const AdminUsers = () => {
 
   const updateUserRole = async (userId, newRole) => {
     try {
-      const response = await fetch(`/admin/api/users/${userId}/role`, {
+      const response = await fetch(`http://127.0.0.1:5001/oskconnectdb/us-central1/api/admin/users/${userId}/role`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -62,7 +73,7 @@ const AdminUsers = () => {
     }
 
     try {
-      const response = await fetch(`/admin/api/users/${userId}`, {
+      const response = await fetch(`http://127.0.0.1:5001/oskconnectdb/us-central1/api/admin/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

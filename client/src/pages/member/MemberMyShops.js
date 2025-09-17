@@ -4,9 +4,10 @@ import { Link } from 'react-router-dom';
 import {
   Plus, Edit, Trash2, Eye, Tag, Image, Gift, Menu, MapPin, Phone, Globe, Clock
 } from 'lucide-react';
-import toast from 'react-hot-toast';
 
-import { auth } from '../../config/firebase'; // 👈 ใช้เอา Firebase ID token
+import { auth, db } from '../../config/firebase'; // 👈 ใช้เอา Firebase ID token
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { useAuth } from '../../context/AuthContext';
 
 // helper: กันค่า createdAt ที่เป็น Firestore Timestamp / string / number
 const formatCreatedAt = (v) => {
@@ -24,35 +25,53 @@ const normalizeShop = (s) => ({
 });
 
 const MemberMyShops = () => {
+  const { user } = useAuth();
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    fetchShops();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (user?.uid) {
+      setupRealTimeListener();
+    }
+    
+    // Cleanup listener on unmount
+    return () => {
+      // Firestore listeners will be automatically cleaned up
+    };
+  }, [user?.uid]);
 
-  // 🔄 ดึงร้านของสมาชิกผ่าน REST /api (ผ่าน Hosting rewrite)
-  const fetchShops = async () => {
+  const setupRealTimeListener = () => {
     try {
-      const idToken = await auth.currentUser?.getIdToken?.();
-      const res = await fetch('/api/member/shops', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
-        },
+      setLoading(true);
+      console.log('MemberMyShops - Setting up real-time listener for user:', user?.uid);
+      
+      // Listen to shops collection changes for current user
+      const shopsQuery = query(
+        collection(db, 'stores'),
+        where('ownerId', '==', user.uid)
+      );
+      
+      const unsubscribe = onSnapshot(shopsQuery, (shopsSnapshot) => {
+        const userShops = [];
+        shopsSnapshot.forEach((doc) => {
+          userShops.push(normalizeShop({ id: doc.id, ...doc.data() }));
+        });
+        
+        console.log('MemberMyShops - Real-time update:', {
+          totalShops: userShops.length,
+          shops: userShops.map(shop => ({ id: shop.id, name: shop.shopName, status: shop.status }))
+        });
+        
+        setShops(userShops);
+        setLoading(false);
+      }, (error) => {
+        console.error('MemberMyShops - Real-time listener error:', error);
+        setLoading(false);
       });
-      if (!res.ok) throw new Error(await res.text());
-
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : (data?.shops || []);
-      setShops(list.map(normalizeShop));
+      
     } catch (error) {
-      console.error('Error fetching shops:', error);
-      toast.error('โหลดรายการร้านค้าล้มเหลว');
-    } finally {
+      console.error('MemberMyShops - Error setting up real-time listener:', error);
       setLoading(false);
     }
   };
@@ -62,7 +81,7 @@ const MemberMyShops = () => {
     if (!window.confirm('ยืนยันการลบร้านค้านี้?')) return;
     try {
       const idToken = await auth.currentUser?.getIdToken?.();
-      const res = await fetch(`/api/member/shops/${shopId}`, {
+      const res = await fetch(`http://127.0.0.1:5001/oskconnectdb/us-central1/api/member/shops/${shopId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -71,11 +90,11 @@ const MemberMyShops = () => {
       });
       if (!res.ok) throw new Error(await res.text());
 
-      toast.success('ลบร้านค้าเรียบร้อย');
+      alert('ลบร้านค้าเรียบร้อย');
       setShops((prev) => prev.filter((s) => s.id !== shopId));
     } catch (error) {
       console.error('Error deleting shop:', error);
-      toast.error('ลบร้านค้าไม่สำเร็จ');
+      alert('ลบร้านค้าไม่สำเร็จ');
     }
   };
 
@@ -173,7 +192,16 @@ const MemberMyShops = () => {
             <div key={shop.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
               <div className="h-48 bg-gray-200 relative">
                 {shop.images?.length > 0 ? (
-                  <img src={shop.images[0].path} alt={shop.shopName} className="w-full h-full object-cover" />
+                  <img 
+                    src={shop.images[0]} 
+                    alt={shop.shopName} 
+                    className="w-full h-full object-cover" 
+                    onError={(e) => {
+                      console.log('Image load error:', shop.images[0]);
+                      e.target.style.display = 'none';
+                    }}
+                    onLoad={() => console.log('Image loaded successfully:', shop.images[0])}
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center"><MapPin className="h-12 w-12 text-gray-400" /></div>
                 )}
