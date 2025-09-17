@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, Phone, Mail, Globe, ArrowLeft, Edit, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import GoogleMapsView from '../components/GoogleMapsView';
 
 const ShopDetail = () => {
   const { id } = useParams();
@@ -237,17 +238,27 @@ const ShopDetail = () => {
             {/* Location */}
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">ตำแหน่ง</h2>
-              {shop.location?.coordinates ? (
+              {(shop.latitude && shop.longitude) || shop.location?.coordinates ? (
                 <div>
-                  <p className="text-sm text-gray-600 mb-2">
-                    พิกัด: {shop.location.coordinates[1]}, {shop.location.coordinates[0]}
+                  <p className="text-sm text-gray-600 mb-4">
+                    พิกัด: {shop.latitude && shop.longitude ? 
+                      `${shop.latitude}, ${shop.longitude}` : 
+                      `${shop.location.coordinates[1]}, ${shop.location.coordinates[0]}`
+                    }
                   </p>
-                  <div className="h-48 border border-gray-300 rounded-md overflow-hidden bg-gray-100 flex items-center justify-center">
-                    <div className="text-center text-gray-500">
-                      <MapPin className="h-8 w-8 mx-auto mb-2" />
-                      <p className="text-sm">แผนที่จะเพิ่มในเวอร์ชันถัดไป</p>
-                    </div>
-                  </div>
+                  <GoogleMapsView 
+                    shops={[{
+                      ...shop,
+                      latitude: shop.latitude || shop.location?.coordinates[1],
+                      longitude: shop.longitude || shop.location?.coordinates[0]
+                    }]} 
+                    center={{ 
+                      lat: parseFloat(shop.latitude || shop.location?.coordinates[1] || 13.7563), 
+                      lng: parseFloat(shop.longitude || shop.location?.coordinates[0] || 100.5018) 
+                    }}
+                    zoom={15}
+                    className="h-64"
+                  />
                 </div>
               ) : (
                 <p className="text-gray-500">ไม่มีข้อมูลตำแหน่ง</p>

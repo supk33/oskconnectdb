@@ -5,6 +5,7 @@ import { auth } from '../../config/firebase';
 import {
   Save, ArrowLeft, MapPin
 } from 'lucide-react';
+import GoogleMapsView from '../../components/GoogleMapsView';
 
 const MemberShopForm = () => {
   const navigate = useNavigate();
@@ -422,20 +423,39 @@ const MemberShopForm = () => {
         </div>
         </div>
 
-          {/* Map Placeholder */}
+          {/* Map */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               เลือกตำแหน่งร้านค้า *
-                </label>
-            <div className="h-96 border border-gray-300 rounded-md overflow-hidden p-8 text-center">
-              <MapPin className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">แผนที่ร้านค้า</h3>
-              <p className="text-gray-600 mb-4">ตำแหน่งปัจจุบัน: {formData.coordinates}</p>
-              <div className="text-sm text-gray-500">
-                <p>แผนที่จะเพิ่มในเวอร์ชันถัดไป</p>
-                <p>ขณะนี้สามารถกรอกพิกัดละติจูดและลองจิจูดได้โดยตรง</p>
+            </label>
+            {formData.latitude && formData.longitude ? (
+              <div className="h-96 border border-gray-300 rounded-md overflow-hidden">
+                <GoogleMapsView 
+                  shops={[{
+                    id: 'current-shop',
+                    shopName: formData.shopName || 'ร้านค้าใหม่',
+                    latitude: formData.latitude,
+                    longitude: formData.longitude,
+                    status: 'pending'
+                  }]} 
+                  center={{ 
+                    lat: parseFloat(formData.latitude || 13.7563), 
+                    lng: parseFloat(formData.longitude || 100.5018) 
+                  }}
+                  zoom={15}
+                  className="h-96"
+                />
               </div>
-            </div>
+            ) : (
+              <div className="h-96 border border-gray-300 rounded-md overflow-hidden p-8 text-center bg-gray-50">
+                <MapPin className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">แผนที่ร้านค้า</h3>
+                <p className="text-gray-600 mb-4">กรุณากรอกพิกัดละติจูดและลองจิจูดเพื่อแสดงแผนที่</p>
+                <div className="text-sm text-gray-500">
+                  <p>กรอกพิกัดในช่อง "พิกัดละติจูด" และ "พิกัดลองจิจูด" ด้านบน</p>
+                </div>
+              </div>
+            )}
             <p className="mt-2 text-sm text-gray-500">
               กรุณากรอกพิกัดละติจูดและลองจิจูดในช่องด้านบน
             </p>
