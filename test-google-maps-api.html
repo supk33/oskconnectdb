@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Google Maps API</title>
+</head>
+<body>
+    <h1>Testing Google Maps API</h1>
+    <div id="map" style="width: 100%; height: 400px;"></div>
+    
+    <script>
+        const GOOGLE_MAPS_API_KEY = 'AIzaSyBedsJuM7yDPHk1zXiu8yrcA2VRIM8Z_48';
+        
+        function initMap() {
+            console.log('Google Maps API loaded successfully');
+            const map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 13.7563, lng: 100.5018 },
+                zoom: 12
+            });
+            
+            // Add a marker
+            new google.maps.Marker({
+                position: { lat: 13.7563, lng: 100.5018 },
+                map: map,
+                title: 'Test Marker'
+            });
+        }
+        
+        // Load Google Maps API
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
+        script.async = true;
+        script.defer = true;
+        
+        script.onload = () => {
+            console.log('Google Maps script loaded');
+        };
+        
+        script.onerror = (error) => {
+            console.error('Failed to load Google Maps API:', error);
+        };
+        
+        document.head.appendChild(script);
+    </script>
+</body>
+</html>

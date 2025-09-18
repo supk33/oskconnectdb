@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Coordinates</title>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
+</head>
+<body>
+    <h1>Test Coordinates</h1>
+    <button onclick="addCoordinates()">Add Coordinates to Shops</button>
+    <div id="result"></div>
+
+    <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            projectId: 'oskconnectdb'
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        // Connect to emulator
+        db.useEmulator('127.0.0.1', 8080);
+
+        async function addCoordinates() {
+            try {
+                console.log('Adding coordinates to shops...');
+                
+                const shopsSnapshot = await db.collection('stores').get();
+                console.log(`Found ${shopsSnapshot.size} shops`);
+                
+                const bangkokCoordinates = [
+                    { lat: 13.7563, lng: 100.5018 }, // Central Bangkok
+                    { lat: 13.7307, lng: 100.5232 }, // Silom
+                    { lat: 13.7563, lng: 100.5018 }, // Siam
+                    { lat: 13.7307, lng: 100.5232 }, // Sukhumvit
+                    { lat: 13.7563, lng: 100.5018 }, // Chatuchak
+                    { lat: 13.7307, lng: 100.5232 }, // Thonglor
+                ];
+                
+                let updatedCount = 0;
+                
+                for (let i = 0; i < shopsSnapshot.docs.length; i++) {
+                    const doc = shopsSnapshot.docs[i];
+                    const shopData = doc.data();
+                    
+                    console.log(`Updating shop: ${shopData.shopName}`);
+                    
+                    const coords = bangkokCoordinates[i % bangkokCoordinates.length];
+                    
+                    await doc.ref.update({
+                        latitude: coords.lat.toString(),
+                        longitude: coords.lng.toString(),
+                        address: shopData.address || 'กรุงเทพมหานคร, ประเทศไทย'
+                    });
+                    
+                    console.log(`  Added coordinates: ${coords.lat}, ${coords.lng}`);
+                    updatedCount++;
+                }
+                
+                document.getElementById('result').innerHTML = `Updated ${updatedCount} shops with coordinates!`;
+                console.log(`Updated ${updatedCount} shops with coordinates`);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
