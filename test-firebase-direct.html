@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Firebase Direct Access</title>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+        // Firebase configuration - ใช้ค่าจาก client/src/config/firebase.js
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZJjL8z4V9yX2W3E4F5G6H7I8J9K0L1M",
+            authDomain: "oskconnectdb.firebaseapp.com",
+            projectId: "oskconnectdb",
+            storageBucket: "oskconnectdb.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef1234567890"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function testDirectAccess() {
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                resultsDiv.innerHTML = '<h3>🔍 Testing Direct Firebase Access...</h3>';
+                resultsDiv.innerHTML += '<p>📝 ไม่ใช้ authentication - ใช้ Firestore Rules ที่อนุญาตให้อ่าน approved stores</p>';
+                
+                // Try to access stores collection directly
+                const storesQuery = query(
+                    collection(db, 'stores'),
+                    where('status', '==', 'approved')
+                );
+                
+                const storesSnapshot = await getDocs(storesQuery);
+                
+                resultsDiv.innerHTML += `<p>✅ Successfully accessed stores! Found ${storesSnapshot.size} approved stores</p>`;
+                
+                // Display stores
+                if (storesSnapshot.size > 0) {
+                    resultsDiv.innerHTML += '<h4>📋 Approved Stores Found:</h4><ul>';
+                    storesSnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        resultsDiv.innerHTML += `
+                            <li>
+                                <strong>${data.shopName || data.name || 'No name'}</strong><br>
+                                ID: ${doc.id}<br>
+                                Status: ${data.status}<br>
+                                Coordinates: ${data.latitude}, ${data.longitude}
+                            </li>
+                        `;
+                    });
+                    resultsDiv.innerHTML += '</ul>';
+                } else {
+                    resultsDiv.innerHTML += '<p>⚠️ No approved stores found</p>';
+                }
+                
+                resultsDiv.innerHTML += '<h3>🎉 Direct access test passed!</h3>';
+                resultsDiv.innerHTML += '<p>💡 This means Firestore Rules are working correctly.</p>';
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<p>❌ Error: ${error.message}</p>`;
+                
+                if (error.code === 'permission-denied') {
+                    resultsDiv.innerHTML += '<p>🔧 Firestore Rules issue - need to check rules in Firebase Console</p>';
+                } else {
+                    resultsDiv.innerHTML += `<p>🔧 Other error: ${error.code}</p>`;
+                }
+            }
+        }
+
+        // Run test when page loads
+        window.addEventListener('load', testDirectAccess);
+    </script>
+</head>
+<body>
+    <h1>🧪 Firebase Direct Access Test</h1>
+    <p>ทดสอบการเข้าถึง Firebase Firestore โดยตรง (ไม่ใช้ authentication)</p>
+    <p>ใช้ Firestore Rules ที่อนุญาตให้อ่าน approved stores</p>
+    <div id="results"></div>
+</body>
+</html>

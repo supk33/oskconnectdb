@@ -3,10 +3,19 @@ import { Link } from 'react-router-dom';
 import { Edit, Trash2, Plus, MapPin, Clock, CheckCircle, XCircle } from 'lucide-react';
 import axios from 'axios';
 import apiConfig from '../config/api';
+import { useAuth } from '../context/AuthContext';
 
 const MyShops = () => {
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  // Check if user can add shops (only approved members or admins)
+  const canAddShops = user && (
+    user.status === 'approved' || 
+    user.role === 'admin' || 
+    (user.role === 'member' && user.status === 'approved')
+  );
 
   useEffect(() => {
     fetchMyShops();
@@ -102,13 +111,19 @@ const MyShops = () => {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-gray-900">ร้านค้าของฉัน</h1>
-          <Link
-            to="/add-shop"
-            className="flex items-center space-x-2 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            <span>เพิ่มร้านค้าใหม่</span>
-          </Link>
+          {canAddShops ? (
+            <Link
+              to="/add-shop"
+              className="flex items-center space-x-2 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              <span>เพิ่มร้านค้าใหม่</span>
+            </Link>
+          ) : user?.status === 'pending' && (
+            <div className="text-yellow-600 text-sm">
+              * รอการอนุมัติสมาชิกก่อนเพิ่มร้านค้า
+            </div>
+          )}
         </div>
       </div>
 
@@ -119,13 +134,19 @@ const MyShops = () => {
           <p className="text-gray-500 mb-6">
             เริ่มต้นด้วยการเพิ่มร้านค้าแรกของคุณ
           </p>
-          <Link
-            to="/add-shop"
-            className="inline-flex items-center space-x-2 bg-primary-600 text-white px-6 py-3 rounded-md hover:bg-primary-700 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            <span>เพิ่มร้านค้าใหม่</span>
-          </Link>
+          {canAddShops ? (
+            <Link
+              to="/add-shop"
+              className="inline-flex items-center space-x-2 bg-primary-600 text-white px-6 py-3 rounded-md hover:bg-primary-700 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              <span>เพิ่มร้านค้าใหม่</span>
+            </Link>
+          ) : user?.status === 'pending' && (
+            <div className="text-yellow-600 text-sm">
+              * รอการอนุมัติสมาชิกก่อนเพิ่มร้านค้า
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

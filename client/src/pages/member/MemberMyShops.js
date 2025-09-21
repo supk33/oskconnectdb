@@ -127,7 +127,7 @@ const MemberMyShops = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="container mx-auto px-4 lg:px-8">
       {/* Header */}
       <div className="mb-8">
         <div className="flex justify-between items-center">

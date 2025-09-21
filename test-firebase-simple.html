@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Firebase Access</title>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZJjL8z4V9yX2W3E4F5G6H7I8J9K0L1M",
+            authDomain: "oskconnectdb.firebaseapp.com",
+            projectId: "oskconnectdb",
+            storageBucket: "oskconnectdb.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef1234567890"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        async function testFirebaseAccess() {
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                resultsDiv.innerHTML = '<h3>🔍 Testing Firebase Access...</h3>';
+                
+                // Step 1: Sign in anonymously
+                resultsDiv.innerHTML += '<p>📝 Step 1: Signing in anonymously...</p>';
+                const userCredential = await signInAnonymously(auth);
+                resultsDiv.innerHTML += `<p>✅ Anonymous sign-in successful! UID: ${userCredential.user.uid}</p>`;
+                
+                // Step 2: Try to access stores collection
+                resultsDiv.innerHTML += '<p>📝 Step 2: Accessing stores collection...</p>';
+                const storesQuery = query(collection(db, 'stores'));
+                const storesSnapshot = await getDocs(storesQuery);
+                
+                resultsDiv.innerHTML += `<p>✅ Successfully accessed stores! Found ${storesSnapshot.size} stores</p>`;
+                
+                // Step 3: Display stores
+                if (storesSnapshot.size > 0) {
+                    resultsDiv.innerHTML += '<h4>📋 Stores Found:</h4><ul>';
+                    storesSnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        resultsDiv.innerHTML += `
+                            <li>
+                                <strong>${data.shopName || data.name || 'No name'}</strong><br>
+                                ID: ${doc.id}<br>
+                                Status: ${data.status}<br>
+                                Coordinates: ${data.latitude}, ${data.longitude}
+                            </li>
+                        `;
+                    });
+                    resultsDiv.innerHTML += '</ul>';
+                } else {
+                    resultsDiv.innerHTML += '<p>⚠️ No stores found in database</p>';
+                }
+                
+                resultsDiv.innerHTML += '<h3>🎉 All tests passed! Firebase is working correctly.</h3>';
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<p>❌ Error: ${error.message}</p>`;
+                resultsDiv.innerHTML += '<p>💡 This usually means Firestore Rules are not configured correctly.</p>';
+                resultsDiv.innerHTML += '<p>🔧 Please check Firestore Rules in Firebase Console.</p>';
+            }
+        }
+
+        // Run test when page loads
+        window.addEventListener('load', testFirebaseAccess);
+    </script>
+</head>
+<body>
+    <h1>🧪 Firebase Access Test</h1>
+    <p>This page will test if we can access Firebase Firestore with anonymous authentication.</p>
+    <div id="results"></div>
+</body>
+</html>

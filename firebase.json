@@ -53,7 +53,8 @@
       "port": 5001
     },
     "firestore": {
-      "port": 8080
+      "port": 8080,
+      "enabled": true
     },
     "storage": {
       "port": 9199
@@ -65,7 +66,6 @@
       "enabled": true,
       "port": 4000
     },
-    "singleProjectMode": true,
-    "import": "firebase-export.json"
+    "singleProjectMode": true
   }
 }

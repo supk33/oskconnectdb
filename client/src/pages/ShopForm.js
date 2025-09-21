@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, Save, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
-import { auth } from '../config/firebase';
+import { auth, db } from '../config/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 const ShopForm = () => {
   const { id } = useParams();
@@ -126,6 +127,19 @@ const ShopForm = () => {
       if (!auth.currentUser) {
         alert('กรุณาเข้าสู่ระบบก่อนเพิ่มร้านค้า');
         navigate('/login');
+        return;
+      }
+
+      // Get user data from Firestore to check status
+      const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+      if (!userDoc.exists()) {
+        alert('ไม่พบข้อมูลผู้ใช้');
+        return;
+      }
+
+      const userData = userDoc.data();
+      if (userData.status !== 'approved') {
+        alert('บัญชีของคุณยังไม่ได้รับการอนุมัติ กรุณารอการอนุมัติจากผู้ดูแลระบบ');
         return;
       }
       

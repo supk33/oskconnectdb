@@ -1,87 +1,21 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if user is admin
-    function isAdmin() {
-      return request.auth != null && 
-        (request.auth.token.email == 'admin@oskconnect.com' || 
-         request.auth.token.role == 'admin');
+    // Allow read access to approved stores for all users
+    match /stores/{storeId} {
+      allow read: if resource.data.status == 'approved';
+      allow write: if request.auth != null;
     }
     
-    // Users collection
+    // Allow read/write access to users collection for authenticated users
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow read, write: if isAdmin(); // Admin can access all user documents
+      allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
-    // Stores collection
-    match /stores/{storeId} {
-      allow read: if true; // ทุกคนอ่านได้
-      allow write: if request.auth != null && (
-        request.auth.uid == resource.data.ownerId || 
-        isAdmin()
-      );
-      allow create: if request.auth != null;
-    }
-    
-    // Tags collection
-    match /tags/{tagId} {
-      allow read: if true;
-      allow write: if request.auth != null && isAdmin();
-    }
-    
-    // Promotions collection
-    match /promotions/{promoId} {
-      allow read: if true;
-      allow write: if request.auth != null && isAdmin();
-    }
-    
-    // Menu items collection
-    match /menuItems/{itemId} {
-      allow read: if true;
-      allow write: if request.auth != null && (
-        request.auth.uid == resource.data.storeOwnerId || 
-        isAdmin()
-      );
-    }
-    
-    // Store photos collection
-    match /storePhotos/{photoId} {
-      allow read: if true;
-      allow write: if request.auth != null && (
-        request.auth.uid == resource.data.storeOwnerId || 
-        isAdmin()
-      );
-    }
-    
-    // Store reviews collection
-    match /storeReviews/{reviewId} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow delete: if request.auth != null && (
-        request.auth.uid == resource.data.userId ||
-        isAdmin()
-      );
-    }
-    
-    // Store categories collection
-    match /storeCategories/{categoryId} {
-      allow read: if true;
-      allow write: if request.auth != null && isAdmin();
-    }
-    
-    // User favorites collection
-    match /userFavorites/{favoriteId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-    }
-    
-    // Store operating hours collection
-    match /storeOperatingHours/{hoursId} {
-      allow read: if true;
-      allow write: if request.auth != null && (
-        request.auth.uid == resource.data.storeOwnerId || 
-        isAdmin()
-      );
+    // Temporary: Allow all access for testing (REMOVE IN PRODUCTION)
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }

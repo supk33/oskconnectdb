@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, getIdTokenResult } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 
 const AuthContext = createContext();
@@ -40,7 +40,7 @@ const authReducer = (state, action) => {
   }
 };
 
-export const AuthProvider = ({ children }) => {
+const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   // Listen to Firebase Auth state changes
@@ -90,7 +90,10 @@ export const AuthProvider = ({ children }) => {
               // Ensure these fields are always present
               uid: firebaseUser.uid,
               email: firebaseUser.email || firestoreData.email,
-              role: firestoreData.role || 'member'
+              role: firestoreData.role || 'visitor',    // ถ้าไม่มีข้อมูลให้เป็น visitor
+              userType: firestoreData.userType || 'visitor',  // ประเภทผู้ใช้: visitor, member, admin
+              status: firestoreData.status || 'active',     // visitor จะมีสถานะ active เสมอ
+              generation: firestoreData.generation
             };
             console.log('User data from Firestore:', userData);
           } else {
@@ -132,11 +135,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (email, password) => {
+  const register = async ({ email, password, firstName, lastName, generation }) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
+      
+      // Create user in Firebase Auth
       const result = await createUserWithEmailAndPassword(auth, email, password);
-      return result;
+      
+      // Add user data to Firestore
+      const userRef = doc(db, 'users', result.user.uid);
+      await setDoc(userRef, {
+        firstName,
+        lastName,
+        generation,
+        email,
+        role: 'pending',  // ผู้สมัครใหม่จะมีสถานะเป็น pending
+        status: 'pending',      // รอการอนุมัติ
+        canAddShops: false,     // ยังไม่สามารถเพิ่มร้านค้าได้จนกว่าจะได้รับการอนุมัติ
+        createdAt: serverTimestamp()
+      });
+
+      return { success: true };
     } catch (error) {
       console.error('Register error:', error);
       throw error;
@@ -177,4 +196,5 @@ export const useAuth = () => {
   return context;
 };
 
+export { AuthProvider };
 export default AuthContext;

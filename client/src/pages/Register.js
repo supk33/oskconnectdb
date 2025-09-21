@@ -14,7 +14,8 @@ const Register = () => {
     lastName: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    generation: '',
   });
   const [errors, setErrors] = useState({});
 
@@ -38,6 +39,7 @@ const Register = () => {
     
     if (!formData.firstName.trim()) newErrors.firstName = 'กรุณากรอกชื่อ';
     if (!formData.lastName.trim()) newErrors.lastName = 'กรุณากรอกนามสกุล';
+    if (!formData.generation.trim()) newErrors.generation = 'กรุณากรอกรุ่น';
     if (!formData.email.trim()) {
       newErrors.email = 'กรุณากรอกอีเมล';
     } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.email)) {
@@ -64,15 +66,26 @@ const Register = () => {
     
     setIsLoading(true);
     try {
-      const result = await registerUser(formData);
+      const result = await registerUser({
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        generation: formData.generation
+      });
       if (result.success) {
-        alert('ลงทะเบียนสำเร็จ');
+        alert('ลงทะเบียนสำเร็จ กรุณารอการอนุมัติจากผู้ดูแลระบบ ท่านจะได้รับอีเมลแจ้งเตือนเมื่อได้รับการอนุมัติ');
         navigate('/');
       } else {
         alert(result.message);
       }
     } catch (error) {
-      alert('เกิดข้อผิดพลาดในการลงทะเบียน');
+      if (error.code === 'auth/email-already-in-use') {
+        alert('อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่น หรือเข้าสู่ระบบด้วยอีเมลนี้');
+      } else {
+        alert('เกิดข้อผิดพลาดในการลงทะเบียน');
+        console.error('Registration error:', error);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -144,6 +157,29 @@ const Register = () => {
                   <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
                 )}
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="generation" className="block text-sm font-medium text-gray-700">
+                รุ่น
+              </label>
+              <div className="mt-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="generation"
+                  name="generation"
+                  type="text"
+                  value={formData.generation}
+                  onChange={handleInputChange}
+                  className="appearance-none relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                  placeholder="รุ่น (เช่น รุ่น 1, รุ่น 2)"
+                />
+              </div>
+              {errors.generation && (
+                <p className="mt-1 text-sm text-red-600">{errors.generation}</p>
+              )}
             </div>
 
             <div>

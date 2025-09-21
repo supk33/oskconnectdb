@@ -4,7 +4,8 @@ import { MapPin, List, Map, Search, Plus } from 'lucide-react';
 import { testShops } from '../utils/testData';
 import { addTestDataToFirestore } from '../utils/addTestData';
 import { useAuth } from '../context/AuthContext';
-import { auth } from '../config/firebase';
+import { auth, db } from '../config/firebase';
+import { collection, getDocs, query } from 'firebase/firestore';
 import GoogleMapsView from '../components/GoogleMapsView';
 
 // ---- helper: ทำให้ได้ Array เสมอ ----
@@ -62,45 +63,79 @@ const ShopList = () => {
 
   const fetchShops = async (latitude, longitude) => {
     try {
-      console.log('Fetching shops via REST');
+      console.log('Fetching shops directly from Firebase');
+      console.log('Current user:', auth.currentUser ? auth.currentUser.uid : 'Not authenticated');
   
-      // รวมพารามิเตอร์สำหรับ “ร้านใกล้ฉัน” ถ้ามีพิกัด
-      const qs = new URLSearchParams({
-        status: 'approved',
-        ...(Number.isFinite(latitude) && Number.isFinite(longitude)
-          ? { lat: String(latitude), lng: String(longitude) }
-          : {}),
-      }).toString();
-  
-      // ใช้ Firebase Functions URL
-      const tryFetch = async (path) => {
-        const idToken = await auth.currentUser?.getIdToken?.().catch(() => null);
-        const headers = idToken ? { Authorization: `Bearer ${idToken}` } : {};
+      // Query shops directly from Firebase Firestore without status filter
+      console.log('Querying all shops from stores collection');
+      const shopsQuery = query(
+        collection(db, 'stores')
+      );
       
-        const res = await fetch(`${path}?${qs}`, { method: 'GET', headers });
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-        return res.json();
-      };
+      const shopsSnapshot = await getDocs(shopsQuery);
+      console.log('Raw Firestore response:', shopsSnapshot);
+      const shopsData = [];
+      
+      shopsSnapshot.forEach((doc) => {
+        console.log('Document data:', doc.id, doc.data());
+        const data = doc.data();
+        // Extract coordinates from various possible formats
+        let latitude = null;
+        let longitude = null;
+        
+        // Try to parse coordinates from a single string field (e.g. "13.7563, 100.5018")
+        if (typeof data.coordinates === 'string') {
+          const coordParts = data.coordinates.split(',').map(part => 
+            parseFloat(part.trim())
+          );
+          if (coordParts.length === 2 && !isNaN(coordParts[0]) && !isNaN(coordParts[1])) {
+            [latitude, longitude] = coordParts;
+          }
+        }
+        // Then try the separate lat/long fields
+        else if (data.latitude != null && data.longitude != null) {
+          latitude = parseFloat(data.latitude);
+          longitude = parseFloat(data.longitude);
+        } 
+        // Finally try the location.coordinates array if available
+        else if (data.location?.coordinates && Array.isArray(data.location.coordinates) && data.location.coordinates.length >= 2) {
+          // GeoJSON format is [longitude, latitude]
+          longitude = parseFloat(data.location.coordinates[0]);
+          latitude = parseFloat(data.location.coordinates[1]);
+        }
 
-      let data;
-      try {
-        data = await tryFetch('http://127.0.0.1:5001/oskconnectdb/us-central1/api/shops');
-      } catch (e1) {
-        console.warn('GET /api/shops failed, fallback to /api/stores', e1);
-        data = await tryFetch('http://127.0.0.1:5001/oskconnectdb/us-central1/api/stores');
-      }
-  
-      // รองรับทั้งรูปแบบ array ตรง ๆ หรือ { shops: [...] } / { items: [...] }
-      const list = Array.isArray(data)
-        ? data
-        : data?.shops || data?.items || [];
-  
-      const safe = Array.isArray(list) ? list : [];
-      setShops(safe);
-  
+        // Only include valid coordinates
+        const hasValidCoordinates = !isNaN(latitude) && !isNaN(longitude) && 
+                                  latitude >= -90 && latitude <= 90 && 
+                                  longitude >= -180 && longitude <= 180;
 
+        shopsData.push({
+          id: doc.id,
+          _id: doc.id,
+          shopName: data.shopName || data.name || 'ร้านค้า',
+          description: data.description || '',
+          category: data.category || '',
+          // Include both formats for backward compatibility and preserve original string format
+          coordinates: data.coordinates,
+          location: hasValidCoordinates ? { coordinates: [longitude, latitude] } : null,
+          latitude: hasValidCoordinates ? latitude : null,
+          longitude: hasValidCoordinates ? longitude : null,
+          phone: data.phone || '',
+          email: data.email || '',
+          status: data.status || 'pending',
+          ownerId: data.ownerId,
+          owner: data.owner || null,
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
+          ...data
+        });
+      });
+      
+      console.log(`✅ Fetched ${shopsData.length} shops from Firebase`);
+      setShops(shopsData);
+  
     } catch (err) {
-      console.error('Error fetching shops:', err);
+      console.error('Error fetching shops from Firebase:', err);
       // dev: ใช้ test data เป็น fallback
       if (process.env.NODE_ENV !== 'production') {
         console.log('Using test data as fallback');
@@ -109,7 +144,7 @@ const ShopList = () => {
         setShops([]);
       }
       // Don't show alert for empty results, just log the error
-      console.log('Failed to load shops from API');
+      console.log('Failed to load shops from Firebase');
     } finally {
       setLoading(false);
     }
@@ -179,7 +214,7 @@ const ShopList = () => {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto">
+      <div className="container mx-auto px-4 lg:px-8">
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-gray-900">ร้านค้าในเครือข่าย</h1>
@@ -206,7 +241,7 @@ const ShopList = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="container mx-auto px-4 lg:px-8">
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-gray-900">ร้านค้าในเครือข่าย</h1>
@@ -312,12 +347,15 @@ const ShopList = () => {
                 <div className="flex items-center text-sm text-gray-500 mb-4">
                   <MapPin className="h-4 w-4 mr-1" />
                   <span>
-                    {Array.isArray(shop?.location?.coordinates) &&
-                    shop.location.coordinates.length >= 2 &&
-                    Number.isFinite(Number(shop.location.coordinates[1])) &&
-                    Number.isFinite(Number(shop.location.coordinates[0])) ?
-                    `${Number(shop.location.coordinates[1]).toFixed(6)}, ${Number(shop.location.coordinates[0]).toFixed(6)}` :
-                      '—'}
+                    {shop.coordinates ? shop.coordinates :
+                      shop.latitude && shop.longitude ? 
+                      `${Number(shop.latitude).toFixed(6)}, ${Number(shop.longitude).toFixed(6)}` :
+                      Array.isArray(shop?.location?.coordinates) &&
+                      shop.location.coordinates.length >= 2 &&
+                      Number.isFinite(Number(shop.location.coordinates[1])) &&
+                      Number.isFinite(Number(shop.location.coordinates[0])) ?
+                      `${Number(shop.location.coordinates[1]).toFixed(6)}, ${Number(shop.location.coordinates[0]).toFixed(6)}` :
+                        '—'}
                   </span>
                 </div>
                 

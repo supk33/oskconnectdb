@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
     fetchUsers();
@@ -46,58 +47,135 @@ const AdminUsers = () => {
 
   const updateUserRole = async (userId, newRole) => {
     try {
+      // Get Firebase ID token
+      const { auth } = await import('../../config/firebase');
+      const idToken = await auth.currentUser?.getIdToken();
+      
+      if (!idToken) {
+        toast.error('กรุณาเข้าสู่ระบบใหม่');
+        return;
+      }
+
       const response = await fetch(`http://127.0.0.1:5001/oskconnectdb/us-central1/api/admin/users/${userId}/role`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${idToken}`
         },
         body: JSON.stringify({ role: newRole })
       });
       
       if (response.ok) {
-        toast.success(`User role updated to ${newRole}`);
+        toast.success(`เปลี่ยนสิทธิ์ผู้ใช้เป็น${newRole === 'admin' ? 'ผู้ดูแลระบบ' : 'สมาชิก'}แล้ว`);
         fetchUsers();
       } else {
-        toast.error('Failed to update user role');
+        toast.error('ไม่สามารถเปลี่ยนสิทธิ์ผู้ใช้ได้');
       }
     } catch (error) {
       console.error('Error updating user role:', error);
-      toast.error('Failed to update user role');
+      toast.error('ไม่สามารถเปลี่ยนสิทธิ์ผู้ใช้ได้');
+    }
+  };
+
+  const updateUserStatus = async (userId, updates) => {
+    try {
+      // Get Firebase ID token
+      const { auth } = await import('../../config/firebase');
+      const idToken = await auth.currentUser?.getIdToken();
+      
+      if (!idToken) {
+        toast.error('กรุณาเข้าสู่ระบบใหม่');
+        return;
+      }
+
+      const response = await fetch(`http://127.0.0.1:5001/oskconnectdb/us-central1/api/admin/users/${userId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify(updates)
+      });
+      
+      if (response.ok) {
+        const statusText = updates.status === 'approved' ? 'อนุมัติแล้ว' : 
+                          updates.status === 'rejected' ? 'ปฏิเสธแล้ว' : 'รอการอนุมัติ';
+        toast.success(`สถานะผู้ใช้: ${statusText}`);
+        fetchUsers();
+      } else {
+        toast.error('ไม่สามารถอัปเดตสถานะผู้ใช้ได้');
+      }
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      toast.error('ไม่สามารถอัปเดตสถานะผู้ใช้ได้');
     }
   };
 
   const deleteUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) {
-      return;
-    }
-
     try {
+      // Get Firebase ID token
+      const { auth } = await import('../../config/firebase');
+      const idToken = await auth.currentUser?.getIdToken();
+      
+      if (!idToken) {
+        toast.error('กรุณาเข้าสู่ระบบใหม่');
+        return;
+      }
+
       const response = await fetch(`http://127.0.0.1:5001/oskconnectdb/us-central1/api/admin/users/${userId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${idToken}`
         }
       });
       
       if (response.ok) {
-        toast.success('User deleted successfully');
+        toast.success('ลบผู้ใช้เรียบร้อยแล้ว');
         fetchUsers();
       } else {
-        toast.error('Failed to delete user');
+        const data = await response.json();
+        toast.error(data.error || 'ไม่สามารถลบผู้ใช้ได้');
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      toast.error('Failed to delete user');
+      toast.error('ไม่สามารถลบผู้ใช้ได้');
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'approved':
+        return 'bg-green-100 text-green-800';
+      case 'rejected':
+        return 'bg-red-100 text-red-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'approved':
+        return 'อนุมัติแล้ว';
+      case 'rejected':
+        return 'ไม่อนุมัติ';
+      case 'pending':
+        return 'รอการอนุมัติ';
+      default:
+        return status;
     }
   };
 
   const getRoleColor = (role) => {
     switch (role) {
       case 'admin':
-        return 'bg-red-100 text-red-800';
+        return 'bg-purple-100 text-purple-800';
       case 'member':
         return 'bg-blue-100 text-blue-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -109,6 +187,8 @@ const AdminUsers = () => {
         return 'ผู้ดูแลระบบ';
       case 'member':
         return 'สมาชิก';
+      case 'pending':
+        return 'รอการอนุมัติ';
       default:
         return role;
     }
@@ -129,7 +209,7 @@ const AdminUsers = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="container mx-auto px-4 lg:px-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 flex items-center">
           <Users className="h-8 w-8 text-blue-600 mr-3" />
@@ -161,6 +241,41 @@ const AdminUsers = () => {
             </div>
           ) : (
             <div className="overflow-x-auto">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex space-x-4">
+                  <button
+                    onClick={() => setFilter('all')}
+                    className={`px-4 py-2 text-sm font-medium rounded-md ${
+                      filter === 'all'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    ทั้งหมด ({users.length})
+                  </button>
+                  <button
+                    onClick={() => setFilter('pending')}
+                    className={`px-4 py-2 text-sm font-medium rounded-md ${
+                      filter === 'pending'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    รอการอนุมัติ ({users.filter(user => user.status === 'pending').length})
+                  </button>
+                  <button
+                    onClick={() => setFilter('approved')}
+                    className={`px-4 py-2 text-sm font-medium rounded-md ${
+                      filter === 'approved'
+                        ? 'bg-green-100 text-green-700'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    อนุมัติแล้ว ({users.filter(user => user.status === 'approved').length})
+                  </button>
+                </div>
+              </div>
+
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -174,16 +289,23 @@ const AdminUsers = () => {
                       บทบาท
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      วันที่สมัคร
+                      รุ่น
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      สถานะ
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       การดำเนินการ
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50">
+                  {users
+                    .filter(user => filter === 'all' || user.status === filter)
+                    .map((user) => (
+                    <tr key={user.id} className={`hover:bg-gray-50 ${
+                      user.status === 'pending' ? 'bg-yellow-50' : ''
+                    }`}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10">
@@ -193,7 +315,7 @@ const AdminUsers = () => {
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">
-                              {user.name || user.firstName || 'ไม่ระบุชื่อ'}
+                              {user.firstName} {user.lastName}
                             </div>
                             <div className="text-sm text-gray-500">
                               ID: {user.id}
@@ -212,37 +334,115 @@ const AdminUsers = () => {
                           {user.role === 'admin' ? (
                             <>
                               <Shield className="h-3 w-3 mr-1" />
-                              ผู้ดูแลระบบ
+                              {user.email === 'admin@oskconnect.com' ? 'ผู้ดูแลระบบหลัก' : 'ผู้ดูแลระบบ'}
                             </>
                           ) : (
                             <>
                               <User className="h-3 w-3 mr-1" />
-                              ผู้ใช้ทั่วไป
+                              {user.role === 'pending' ? 'รอการอนุมัติ' : user.role === 'member' ? 'สมาชิก' : 'ผู้ใช้ทั่วไป'}
                             </>
                           )}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {fmtDate(user.createdAt)}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span>{user.generation || '-'}</span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center space-x-2">
-                          <select
-                            value={user.role}
-                            onChange={(e) => updateUserRole(user.id, e.target.value)}
-                            className="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                          >
-                            <option value="member">สมาชิก</option>
-                            <option value="admin">ผู้ดูแลระบบ</option>
-                          </select>
-                          <button
-                            onClick={() => deleteUser(user.id)}
-                            className="text-red-600 hover:text-red-900"
-                            title="ลบผู้ใช้"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          user.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          user.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {user.status === 'approved' ? 'อนุมัติแล้ว' :
+                           user.status === 'rejected' ? 'ไม่อนุมัติ' :
+                           'รอการอนุมัติ'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-medium">
+                        {user.email === 'admin@oskconnect.com' ? (
+                          <span className="text-sm text-gray-500">-</span>
+                        ) : (
+                          <div className="flex justify-center space-x-2">
+                            {user.status === 'pending' ? (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm(`ยืนยันการอนุมัติสมาชิก "${user.firstName} ${user.lastName}"?`)) {
+                                      updateUserStatus(user.id, {
+                                        role: 'member',
+                                        status: 'approved'
+                                      });
+                                    }
+                                  }}
+                                  className="px-3 py-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200"
+                                >
+                                  อนุมัติ
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm(`ยืนยันการปฏิเสธสมาชิก "${user.firstName} ${user.lastName}"?`)) {
+                                      updateUserStatus(user.id, {
+                                        role: 'visitor',
+                                        status: 'rejected'
+                                      });
+                                    }
+                                  }}
+                                  className="px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200"
+                                >
+                                  ไม่อนุมัติ
+                                </button>
+                              </>
+                            ) : user.role === 'member' ? (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm(`ต้องการเปลี่ยน "${user.firstName} ${user.lastName}" เป็นผู้ดูแลระบบ?`)) {
+                                      updateUserRole(user.id, 'admin');
+                                    }
+                                  }}
+                                  className="px-3 py-1 bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200"
+                                >
+                                  เปลี่ยนเป็นผู้ดูแลระบบ
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm(`ต้องการยกเลิกการเป็นสมาชิกของ "${user.firstName} ${user.lastName}"?`)) {
+                                      updateUserStatus(user.id, {
+                                        role: 'visitor',
+                                        status: 'active'
+                                      });
+                                    }
+                                  }}
+                                  className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                                >
+                                  ยกเลิกการเป็นสมาชิก
+                                </button>
+                              </>
+                            ) : user.role === 'admin' ? (
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`ต้องการเปลี่ยน "${user.firstName} ${user.lastName}" กลับเป็นสมาชิก?`)) {
+                                    updateUserRole(user.id, 'member');
+                                  }
+                                }}
+                                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200"
+                              >
+                                เปลี่ยนเป็นสมาชิก
+                              </button>
+                            ) : null}
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`คุณแน่ใจที่จะลบผู้ใช้ "${user.firstName} ${user.lastName}" หรือไม่?`)) {
+                                  deleteUser(user.id);
+                                }
+                              }}
+                              className="px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200"
+                              title="ลบผู้ใช้"
+                            >
+                              ลบ
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
