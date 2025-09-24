@@ -76,6 +76,12 @@ firebase login
 # Initialize Firebase
 firebase init
 
+# ตั้งค่า Service Account Credentials
+1. ไปที่ Firebase Console > Project Settings > Service Accounts
+2. คลิก "Generate New Private Key"
+3. บันทึกไฟล์ที่ดาวน์โหลดมาเป็น `functions/oskconnectdb-firebase-adminsdk.json`
+   (ดูตัวอย่างรูปแบบไฟล์ได้จาก `functions/oskconnectdb-firebase-adminsdk.example.json`)
+
 # ตั้งค่า Environment Variables
 firebase functions:config:set line.liff_id="your-line-liff-id"
 firebase functions:config:set line.channel_secret="your-line-channel-secret"
