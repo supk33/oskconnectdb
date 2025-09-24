@@ -24,6 +24,8 @@ firebase-debug.*.log
 .firebaserc.local
 firebase-export.json
 firebase-export-*.json
+*-firebase-adminsdk.json
+functions/*-firebase-adminsdk.json
 
 # IDE
 .vscode/

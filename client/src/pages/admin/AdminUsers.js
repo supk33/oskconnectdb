@@ -1,53 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Users, User, Shield, Mail, Calendar, Edit, Trash2 } from 'lucide-react';
+import { User, Trash2, Shield, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
+  // ดึงข้อมูลผู้ใช้ทั้งหมด
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      
-      // Get Firebase ID token
-      const { auth } = await import('../../config/firebase');
-      const idToken = await auth.currentUser?.getIdToken?.();
-      
-      if (!idToken) {
-        toast.error('กรุณาเข้าสู่ระบบใหม่');
-        return;
-      }
-
-      const response = await fetch('http://127.0.0.1:5001/oskconnectdb/us-central1/api/admin/users', {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.data || []);
-      } else {
-        toast.error('Failed to fetch users');
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      toast.error('Failed to fetch users');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateUserRole = async (userId, newRole) => {
-    try {
-      // Get Firebase ID token
       const { auth } = await import('../../config/firebase');
       const idToken = await auth.currentUser?.getIdToken();
       
@@ -56,30 +22,36 @@ const AdminUsers = () => {
         return;
       }
 
-      const response = await fetch(`http://127.0.0.1:5001/oskconnectdb/us-central1/api/admin/users/${userId}/role`, {
-        method: 'PUT',
+      const response = await fetch('http://127.0.0.1:5001/oskconnectdb/us-central1/api/admin/users', {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({ role: newRole })
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        }
       });
-      
+
       if (response.ok) {
-        toast.success(`เปลี่ยนสิทธิ์ผู้ใช้เป็น${newRole === 'admin' ? 'ผู้ดูแลระบบ' : 'สมาชิก'}แล้ว`);
-        fetchUsers();
+        const data = await response.json();
+        // เรียงลำดับผู้ใช้โดยให้ผู้ที่รอการอนุมัติขึ้นก่อน
+        const sortedUsers = (data.data || []).sort((a, b) => {
+          if (a.status === 'pending' && b.status !== 'pending') return -1;
+          if (a.status !== 'pending' && b.status === 'pending') return 1;
+          return 0;
+        });
+        setUsers(sortedUsers);
       } else {
-        toast.error('ไม่สามารถเปลี่ยนสิทธิ์ผู้ใช้ได้');
+        toast.error('ไม่สามารถโหลดข้อมูลผู้ใช้ได้');
       }
     } catch (error) {
-      console.error('Error updating user role:', error);
-      toast.error('ไม่สามารถเปลี่ยนสิทธิ์ผู้ใช้ได้');
+      console.error('Error fetching users:', error);
+      toast.error('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const updateUserStatus = async (userId, updates) => {
+  // อนุมัติผู้ใช้
+  const approveUser = async (userId, userData) => {
     try {
-      // Get Firebase ID token
       const { auth } = await import('../../config/firebase');
       const idToken = await auth.currentUser?.getIdToken();
       
@@ -91,29 +63,73 @@ const AdminUsers = () => {
       const response = await fetch(`http://127.0.0.1:5001/oskconnectdb/us-central1/api/admin/users/${userId}/status`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(updates)
+        body: JSON.stringify({
+          role: 'member',
+          status: 'approved',
+          canAddShops: true, // อนุญาตให้เพิ่มร้านค้าได้เมื่อได้รับการอนุมัติ
+          approvedAt: new Date().toISOString(),
+          approvedBy: auth.currentUser.email
+        })
       });
-      
+
       if (response.ok) {
-        const statusText = updates.status === 'approved' ? 'อนุมัติแล้ว' : 
-                          updates.status === 'rejected' ? 'ปฏิเสธแล้ว' : 'รอการอนุมัติ';
-        toast.success(`สถานะผู้ใช้: ${statusText}`);
+        toast.success(`อนุมัติผู้ใช้ ${userData.firstName} ${userData.lastName} สำเร็จ`);
         fetchUsers();
       } else {
-        toast.error('ไม่สามารถอัปเดตสถานะผู้ใช้ได้');
+        const error = await response.json();
+        toast.error(error.error || 'ไม่สามารถอนุมัติผู้ใช้ได้');
       }
     } catch (error) {
-      console.error('Error updating user status:', error);
-      toast.error('ไม่สามารถอัปเดตสถานะผู้ใช้ได้');
+      console.error('Error approving user:', error);
+      toast.error('เกิดข้อผิดพลาดในการอนุมัติ');
     }
   };
 
-  const deleteUser = async (userId) => {
+  // ไม่อนุมัติผู้ใช้
+  const rejectUser = async (userId, userData) => {
     try {
-      // Get Firebase ID token
+      const { auth } = await import('../../config/firebase');
+      const idToken = await auth.currentUser?.getIdToken();
+      
+      if (!idToken) {
+        toast.error('กรุณาเข้าสู่ระบบใหม่');
+        return;
+      }
+
+      const response = await fetch(`http://127.0.0.1:5001/oskconnectdb/us-central1/api/admin/users/${userId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          role: 'visitor',
+          status: 'rejected',
+          canAddShops: false,
+          rejectedAt: new Date().toISOString(),
+          rejectedBy: auth.currentUser.email
+        })
+      });
+
+      if (response.ok) {
+        toast.success(`ไม่อนุมัติผู้ใช้ ${userData.firstName} ${userData.lastName}`);
+        fetchUsers();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'ไม่สามารถดำเนินการได้');
+      }
+    } catch (error) {
+      console.error('Error rejecting user:', error);
+      toast.error('เกิดข้อผิดพลาดในการดำเนินการ');
+    }
+  };
+
+  // ลบผู้ใช้
+  const deleteUser = async (userId, userData) => {
+    try {
       const { auth } = await import('../../config/firebase');
       const idToken = await auth.currentUser?.getIdToken();
       
@@ -128,76 +144,18 @@ const AdminUsers = () => {
           'Authorization': `Bearer ${idToken}`
         }
       });
-      
+
       if (response.ok) {
-        toast.success('ลบผู้ใช้เรียบร้อยแล้ว');
+        toast.success(`ลบผู้ใช้ ${userData.firstName} ${userData.lastName} สำเร็จ`);
         fetchUsers();
       } else {
-        const data = await response.json();
-        toast.error(data.error || 'ไม่สามารถลบผู้ใช้ได้');
+        const error = await response.json();
+        toast.error(error.error || 'ไม่สามารถลบผู้ใช้ได้');
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      toast.error('ไม่สามารถลบผู้ใช้ได้');
+      toast.error('เกิดข้อผิดพลาดในการลบผู้ใช้');
     }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'approved':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'approved':
-        return 'อนุมัติแล้ว';
-      case 'rejected':
-        return 'ไม่อนุมัติ';
-      case 'pending':
-        return 'รอการอนุมัติ';
-      default:
-        return status;
-    }
-  };
-
-  const getRoleColor = (role) => {
-    switch (role) {
-      case 'admin':
-        return 'bg-purple-100 text-purple-800';
-      case 'member':
-        return 'bg-blue-100 text-blue-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getRoleText = (role) => {
-    switch (role) {
-      case 'admin':
-        return 'ผู้ดูแลระบบ';
-      case 'member':
-        return 'สมาชิก';
-      case 'pending':
-        return 'รอการอนุมัติ';
-      default:
-        return role;
-    }
-  };
-
-  const fmtDate = (date) => {
-    if (!date) return '-';
-    const d = new Date(date);
-    return d.toLocaleDateString('th-TH');
   };
 
   if (loading) {
@@ -209,310 +167,205 @@ const AdminUsers = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 lg:px-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-          <Users className="h-8 w-8 text-blue-600 mr-3" />
-          จัดการผู้ใช้
-        </h1>
-        <p className="text-gray-600 mt-2">จัดการบัญชีผู้ใช้และสิทธิ์การเข้าถึง</p>
-      </div>
-
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
+    <div className="container mx-auto px-4 py-8">
+      <div className="bg-white rounded-lg shadow-sm">
+        <div className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">
-              รายชื่อผู้ใช้ทั้งหมด ({users.length})
-            </h3>
+            <h2 className="text-2xl font-bold text-gray-800">จัดการผู้ใช้งาน</h2>
             <button
               onClick={fetchUsers}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
             >
-              <Users className="h-4 w-4 mr-2" />
               รีเฟรช
             </button>
           </div>
 
-          {users.length === 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ชื่อ-นามสกุล
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    อีเมล
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    บทบาท
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
+                    สถานะและรายละเอียด
+                  </th>
+                
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    จัดการ
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {users.map((user) => (
+                  <tr key={user.id} className={user.status === 'pending' ? 'bg-yellow-50' : user.status === 'rejected' ? 'bg-red-50' : ''}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center">
+                          <User className="h-6 w-6 text-gray-500" />
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {user.firstName} {user.lastName}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{user.email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        {user.role === 'admin' ? (
+                          <span className="px-3 py-1 text-sm rounded-full bg-purple-100 text-purple-700 flex items-center">
+                            <Shield className="h-4 w-4 mr-1" />
+                            ผู้ดูแลระบบ
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-700">
+                            สมาชิก
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col space-y-2">
+                        {/* สถานะหลัก */}
+                        <div className="flex items-center">
+                          {user.status === 'pending' ? (
+                            <div className="px-3 py-1.5 text-sm font-medium rounded-lg bg-yellow-100 text-yellow-800 border border-yellow-200">
+                              ⏳ รอการอนุมัติ
+                            </div>
+                          ) : user.status === 'approved' ? (
+                            <div className="px-3 py-1.5 text-sm font-medium rounded-lg bg-green-100 text-green-800 border border-green-200">
+                              ✓ อนุมัติแล้ว
+                            </div>
+                          ) : user.status === 'rejected' ? (
+                            <div className="px-3 py-1.5 text-sm font-medium rounded-lg bg-red-100 text-red-800 border border-red-200">
+                              ✕ ไม่อนุมัติ
+                            </div>
+                          ) : (
+                            <div className="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-100 text-gray-800 border border-gray-200">
+                              {user.status}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* แสดงรายละเอียดเพิ่มเติม */}
+                        <div className="text-xs space-y-1 bg-gray-50 p-2 rounded-lg border border-gray-100">
+                          {user.status === 'approved' && (
+                            <>
+                              {user.approvedAt && (
+                                <div className="flex items-center text-gray-600">
+                                  <span className="w-24">อนุมัติเมื่อ:</span>
+                                  <span className="font-medium">{new Date(user.approvedAt).toLocaleDateString('th-TH')}</span>
+                                </div>
+                              )}
+                              {user.approvedBy && (
+                                <div className="flex items-center text-gray-600">
+                                  <span className="w-24">อนุมัติโดย:</span>
+                                  <span className="font-medium">{user.approvedBy}</span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {user.status === 'rejected' && (
+                            <>
+                              {user.rejectedAt && (
+                                <div className="flex items-center text-gray-600">
+                                  <span className="w-24">ปฏิเสธเมื่อ:</span>
+                                  <span className="font-medium">{new Date(user.rejectedAt).toLocaleDateString('th-TH')}</span>
+                                </div>
+                              )}
+                              {user.rejectedBy && (
+                                <div className="flex items-center text-gray-600">
+                                  <span className="w-24">ปฏิเสธโดย:</span>
+                                  <span className="font-medium">{user.rejectedBy}</span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {/* สถานะร้านค้า */}
+                          <div className="flex items-center pt-1">
+                            <span className="w-24">ร้านค้า:</span>
+                            {user.canAddShops ? (
+                              <span className="text-green-600 font-medium flex items-center">
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                สามารถเพิ่มได้
+                              </span>
+                            ) : (
+                              <span className="text-red-600 font-medium flex items-center">
+                                <XCircle className="h-4 w-4 mr-1" />
+                                ไม่สามารถเพิ่ม
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="flex items-center justify-center space-x-2">
+                        {user.status === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`ต้องการอนุมัติผู้ใช้ "${user.firstName} ${user.lastName}" ใช่หรือไม่?`)) {
+                                  approveUser(user.id, user);
+                                }
+                              }}
+                              className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100"
+                              title="อนุมัติ"
+                            >
+                              <CheckCircle className="h-5 w-5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`ต้องการไม่อนุมัติผู้ใช้ "${user.firstName} ${user.lastName}" ใช่หรือไม่?`)) {
+                                  rejectUser(user.id, user);
+                                }
+                              }}
+                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"
+                              title="ไม่อนุมัติ"
+                            >
+                              <XCircle className="h-5 w-5" />
+                            </button>
+                          </>
+                        )}
+                        {user.role !== 'admin' && (
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`ต้องการลบผู้ใช้ "${user.firstName} ${user.lastName}" ใช่หรือไม่?`)) {
+                                deleteUser(user.id, user);
+                              }
+                            }}
+                            className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"
+                            title="ลบผู้ใช้"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          {users.length === 0 && (
             <div className="text-center py-12">
-              <Users className="mx-auto h-12 w-12 text-gray-400" />
+              <User className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">ไม่มีผู้ใช้</h3>
               <p className="mt-1 text-sm text-gray-500">ยังไม่มีผู้ใช้ในระบบ</p>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => setFilter('all')}
-                    className={`px-4 py-2 text-sm font-medium rounded-md ${
-                      filter === 'all'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    ทั้งหมด ({users.length})
-                  </button>
-                  <button
-                    onClick={() => setFilter('pending')}
-                    className={`px-4 py-2 text-sm font-medium rounded-md ${
-                      filter === 'pending'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    รอการอนุมัติ ({users.filter(user => user.status === 'pending').length})
-                  </button>
-                  <button
-                    onClick={() => setFilter('approved')}
-                    className={`px-4 py-2 text-sm font-medium rounded-md ${
-                      filter === 'approved'
-                        ? 'bg-green-100 text-green-700'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    อนุมัติแล้ว ({users.filter(user => user.status === 'approved').length})
-                  </button>
-                </div>
-              </div>
-
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ผู้ใช้
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      อีเมล
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      บทบาท
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      รุ่น
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      สถานะ
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      การดำเนินการ
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {users
-                    .filter(user => filter === 'all' || user.status === filter)
-                    .map((user) => (
-                    <tr key={user.id} className={`hover:bg-gray-50 ${
-                      user.status === 'pending' ? 'bg-yellow-50' : ''
-                    }`}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                              <User className="h-5 w-5 text-gray-600" />
-                            </div>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {user.firstName} {user.lastName}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              ID: {user.id}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-sm text-gray-900">
-                          <Mail className="h-4 w-4 mr-2 text-gray-400" />
-                          {user.email || 'ไม่ระบุอีเมล'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
-                          {user.role === 'admin' ? (
-                            <>
-                              <Shield className="h-3 w-3 mr-1" />
-                              {user.email === 'admin@oskconnect.com' ? 'ผู้ดูแลระบบหลัก' : 'ผู้ดูแลระบบ'}
-                            </>
-                          ) : (
-                            <>
-                              <User className="h-3 w-3 mr-1" />
-                              {user.role === 'pending' ? 'รอการอนุมัติ' : user.role === 'member' ? 'สมาชิก' : 'ผู้ใช้ทั่วไป'}
-                            </>
-                          )}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span>{user.generation || '-'}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          user.status === 'approved' ? 'bg-green-100 text-green-800' :
-                          user.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {user.status === 'approved' ? 'อนุมัติแล้ว' :
-                           user.status === 'rejected' ? 'ไม่อนุมัติ' :
-                           'รอการอนุมัติ'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-medium">
-                        {user.email === 'admin@oskconnect.com' ? (
-                          <span className="text-sm text-gray-500">-</span>
-                        ) : (
-                          <div className="flex justify-center space-x-2">
-                            {user.status === 'pending' ? (
-                              <>
-                                <button
-                                  onClick={() => {
-                                    if (window.confirm(`ยืนยันการอนุมัติสมาชิก "${user.firstName} ${user.lastName}"?`)) {
-                                      updateUserStatus(user.id, {
-                                        role: 'member',
-                                        status: 'approved'
-                                      });
-                                    }
-                                  }}
-                                  className="px-3 py-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200"
-                                >
-                                  อนุมัติ
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    if (window.confirm(`ยืนยันการปฏิเสธสมาชิก "${user.firstName} ${user.lastName}"?`)) {
-                                      updateUserStatus(user.id, {
-                                        role: 'visitor',
-                                        status: 'rejected'
-                                      });
-                                    }
-                                  }}
-                                  className="px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200"
-                                >
-                                  ไม่อนุมัติ
-                                </button>
-                              </>
-                            ) : user.role === 'member' ? (
-                              <>
-                                <button
-                                  onClick={() => {
-                                    if (window.confirm(`ต้องการเปลี่ยน "${user.firstName} ${user.lastName}" เป็นผู้ดูแลระบบ?`)) {
-                                      updateUserRole(user.id, 'admin');
-                                    }
-                                  }}
-                                  className="px-3 py-1 bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200"
-                                >
-                                  เปลี่ยนเป็นผู้ดูแลระบบ
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    if (window.confirm(`ต้องการยกเลิกการเป็นสมาชิกของ "${user.firstName} ${user.lastName}"?`)) {
-                                      updateUserStatus(user.id, {
-                                        role: 'visitor',
-                                        status: 'active'
-                                      });
-                                    }
-                                  }}
-                                  className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
-                                >
-                                  ยกเลิกการเป็นสมาชิก
-                                </button>
-                              </>
-                            ) : user.role === 'admin' ? (
-                              <button
-                                onClick={() => {
-                                  if (window.confirm(`ต้องการเปลี่ยน "${user.firstName} ${user.lastName}" กลับเป็นสมาชิก?`)) {
-                                    updateUserRole(user.id, 'member');
-                                  }
-                                }}
-                                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200"
-                              >
-                                เปลี่ยนเป็นสมาชิก
-                              </button>
-                            ) : null}
-                            <button
-                              onClick={() => {
-                                if (window.confirm(`คุณแน่ใจที่จะลบผู้ใช้ "${user.firstName} ${user.lastName}" หรือไม่?`)) {
-                                  deleteUser(user.id);
-                                }
-                              }}
-                              className="px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200"
-                              title="ลบผู้ใช้"
-                            >
-                              ลบ
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           )}
-        </div>
-      </div>
-
-      {/* User Statistics */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Users className="h-6 w-6 text-gray-400" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    ผู้ใช้ทั้งหมด
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {users.length}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Shield className="h-6 w-6 text-red-400" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    ผู้ดูแลระบบ
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {users.filter(user => user.role === 'admin').length}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <User className="h-6 w-6 text-blue-400" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    สมาชิก
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {users.filter(user => user.role === 'member').length}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

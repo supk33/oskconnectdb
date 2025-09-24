@@ -54,6 +54,33 @@ router.get('/shops/my-shops', async (req, res) => {
 router.post('/stores', async (req, res) => {
   try {
     const { uid } = req.user;
+
+    // ตรวจสอบสถานะผู้ใช้ก่อนเพิ่มร้านค้า
+    const userRef = admin.firestore().collection('users').doc(uid);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'ไม่พบข้อมูลผู้ใช้' 
+      });
+    }
+
+    const userData = userDoc.data();
+    if (userData.status !== 'approved') {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'บัญชีของคุณยังไม่ได้รับการอนุมัติ กรุณาติดต่อผู้ดูแลระบบ' 
+      });
+    }
+
+    if (!userData.canAddShops) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'บัญชีของคุณไม่มีสิทธิ์เพิ่มร้านค้า' 
+      });
+    }
+
     const storeData = {
       ...req.body,
       ownerId: uid,

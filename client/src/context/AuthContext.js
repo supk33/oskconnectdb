@@ -142,16 +142,16 @@ const AuthProvider = ({ children }) => {
       // Create user in Firebase Auth
       const result = await createUserWithEmailAndPassword(auth, email, password);
       
-      // Add user data to Firestore
+      // Add user data to Firestore with member role and pending status
       const userRef = doc(db, 'users', result.user.uid);
       await setDoc(userRef, {
         firstName,
         lastName,
         generation,
         email,
-        role: 'pending',  // ผู้สมัครใหม่จะมีสถานะเป็น pending
-        status: 'pending',      // รอการอนุมัติ
-        canAddShops: false,     // ยังไม่สามารถเพิ่มร้านค้าได้จนกว่าจะได้รับการอนุมัติ
+        role: 'member',        // เป็นสมาชิกแต่ต้องรอการอนุมัติ
+        status: 'pending',     // สถานะรอการอนุมัติ
+        canAddShops: false,    // ยังไม่สามารถเพิ่มร้านค้าได้จนกว่าจะได้รับการอนุมัติ
         createdAt: serverTimestamp()
       });
 

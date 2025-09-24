@@ -130,6 +130,48 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleApproveUser = async (userId) => {
+    try {
+      if (!window.confirm('คุณต้องการอนุมัติสมาชิกนี้ใช่หรือไม่?')) return;
+      
+      // Update user status in Firestore
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, {
+        status: 'approved',
+        canAddShops: true, // อนุญาตให้เพิ่มร้านค้าได้
+        approvedAt: new Date(),
+        approvedBy: user?.email || '',
+        updatedAt: new Date()
+      });
+      
+      alert('อนุมัติสมาชิกสำเร็จ');
+    } catch (error) {
+      console.error('Error approving user:', error);
+      alert('เกิดข้อผิดพลาดในการอนุมัติสมาชิก');
+    }
+  };
+
+  const handleRejectUser = async (userId) => {
+    try {
+      if (!window.confirm('คุณต้องการไม่อนุมัติสมาชิกนี้ใช่หรือไม่?')) return;
+      
+      // Update user status in Firestore
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, {
+        status: 'rejected',
+        canAddShops: false,
+        rejectedAt: new Date(),
+        rejectedBy: user?.email || '',
+        updatedAt: new Date()
+      });
+      
+      alert('ไม่อนุมัติสมาชิกสำเร็จ');
+    } catch (error) {
+      console.error('Error rejecting user:', error);
+      alert('เกิดข้อผิดพลาดในการไม่อนุมัติสมาชิก');
+    }
+  };
+
   const handleToggleUserRole = async (userId, currentRole) => {
     try {
       const newRole = currentRole === 'member' ? 'admin' : 'member';
@@ -627,7 +669,7 @@ const AdminDashboard = () => {
                         บทบาท
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        วันที่สมัคร
+                        สถานะ
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         การดำเนินการ
@@ -652,25 +694,67 @@ const AdminDashboard = () => {
                             {user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'สมาชิก'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(user.createdAt)}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            user.status === 'pending' 
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : user.status === 'approved'
+                              ? 'bg-green-100 text-green-800'
+                              : user.status === 'rejected'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {user.status === 'pending' 
+                              ? '⏳ รอการอนุมัติ'
+                              : user.status === 'approved'
+                              ? '✓ อนุมัติแล้ว'
+                              : user.status === 'rejected'
+                              ? '✕ ไม่อนุมัติ'
+                              : user.status || 'ไม่ระบุ'}
+                          </span>
+                          {user.status === 'approved' && user.canAddShops && (
+                            <span className="ml-2 text-xs text-green-600">
+                              (สามารถเพิ่มร้านค้าได้)
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          {user.role !== 'admin' && (
-                            <button
-                              onClick={() => handleToggleUserRole(user.id, user.role)}
-                              className="text-indigo-600 hover:text-indigo-900 mr-3"
-                            >
-                              {user.role === 'member' ? 'เลื่อนเป็น Admin' : 'ลดเป็น Member'}
-                            </button>
-                          )}
-                          {user.role !== 'admin' && (
-                            <button
-                              onClick={() => handleDeleteUser(user.id)}
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              ลบ
-                            </button>
+                          {user.status === 'pending' ? (
+                            <>
+                              <button
+                                onClick={() => handleApproveUser(user.id)}
+                                className="text-green-600 hover:text-green-900 mr-3"
+                                title="อนุมัติสมาชิก"
+                              >
+                                อนุมัติ
+                              </button>
+                              <button
+                                onClick={() => handleRejectUser(user.id)}
+                                className="text-red-600 hover:text-red-900 mr-3"
+                                title="ไม่อนุมัติสมาชิก"
+                              >
+                                ไม่อนุมัติ
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {user.role !== 'admin' && (
+                                <button
+                                  onClick={() => handleToggleUserRole(user.id, user.role)}
+                                  className="text-indigo-600 hover:text-indigo-900 mr-3"
+                                >
+                                  {user.role === 'member' ? 'เลื่อนเป็น Admin' : 'ลดเป็น Member'}
+                                </button>
+                              )}
+                              {user.role !== 'admin' && (
+                                <button
+                                  onClick={() => handleDeleteUser(user.id)}
+                                  className="text-red-600 hover:text-red-900"
+                                >
+                                  ลบ
+                                </button>
+                              )}
+                            </>
                           )}
                         </td>
                       </tr>
