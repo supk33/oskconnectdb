@@ -21,11 +21,16 @@ dist/
 .firebase/
 firebase-debug.log
 firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
 .firebaserc.local
 firebase-export.json
 firebase-export-*.json
 *-firebase-adminsdk.json
 functions/*-firebase-adminsdk.json
+**/firebase-export-*/
+**/emulator-data/
+firebase-export.json/
 
 # IDE
 .vscode/
